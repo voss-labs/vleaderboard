@@ -1,0 +1,391 @@
+{
+  "researched_on": "2026-10-09",
+  "manifest_created_at_utc": "2026-10-09T09:04:21.713100+00:00",
+  "source_files": [
+    {
+      "file": "first-contributions-tree.json",
+      "source_url": "https://api.github.com/repos/voss-labs/first-contributions/git/trees/main?recursive=1",
+      "captured_at_utc": "2026-10-09T09:00:15.711965+00:00",
+      "bytes": 10061,
+      "sha256": "f844a4834ec30d5e8ccc30e11df30f7bda44e2fd6c96bc677296802cbdb17c9b"
+    },
+    {
+      "file": "geist-OFL.txt",
+      "source_url": "https://raw.githubusercontent.com/vercel/geist-font/main/OFL.txt",
+      "captured_at_utc": "2026-10-09T09:00:17.075635+00:00",
+      "bytes": 4383,
+      "sha256": "c683bfbcc7e087f5d37a54ef628f10387c451a83ddc459b151403a164ac46c90"
+    },
+    {
+      "file": "identity-Mandar885.json",
+      "source_url": "https://api.github.com/users/Mandar885",
+      "captured_at_utc": "2026-10-09T09:01:13.213984+00:00",
+      "bytes": 1288,
+      "sha256": "5e6be6c19fd4a0b29b78a9a6a676cb00602088aacb5a05bd2216f253dbfc2a15"
+    },
+    {
+      "file": "identity-armash66.json",
+      "source_url": "https://api.github.com/users/armash66",
+      "captured_at_utc": "2026-10-09T09:01:13.699929+00:00",
+      "bytes": 1201,
+      "sha256": "834ffc0f2b478f75f93d9e569e35ed79c17292bbe8579be73660c59157b10607"
+    },
+    {
+      "file": "identity-harshalmore31.json",
+      "source_url": "https://api.github.com/users/harshalmore31",
+      "captured_at_utc": "2026-10-09T09:01:12.768847+00:00",
+      "bytes": 1247,
+      "sha256": "3d57c28bb745c202bcbdc3944db5477635534f491567ac2aacd7a6c6a57a594b"
+    },
+    {
+      "file": "org-profile-README.md",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/.github/main/profile/README.md",
+      "captured_at_utc": "2026-10-09T09:00:16.682423+00:00",
+      "bytes": 3478,
+      "sha256": "46fda4b826300bc469e1bc22c9e2fa4ea0e232258dfe229a615c1ecfb5e0c487"
+    },
+    {
+      "file": "org-public-members.json",
+      "source_url": "https://api.github.com/orgs/voss-labs/members?per_page=100",
+      "captured_at_utc": "2026-10-09T08:57:45.691535+00:00",
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "file": "org-repositories.json",
+      "source_url": "https://api.github.com/orgs/voss-labs/repos?per_page=100&type=public",
+      "captured_at_utc": "2026-10-09T08:57:45.291012+00:00",
+      "bytes": 61832,
+      "sha256": "906a2f2b1f3a70562506d078ff7fd33e5b2f7e50ab87f31333d11eb95068eb71"
+    },
+    {
+      "file": "repo-first-contributions-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/first-contributions/readme",
+      "captured_at_utc": "2026-10-09T08:58:39.614795+00:00",
+      "bytes": 288,
+      "sha256": "bf4475646ab3139c259559d5d7c95a18600d639aa330d59651dfeaaca16c8b0c"
+    },
+    {
+      "file": "repo-first-contributions-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/first-contributions/readme",
+      "captured_at_utc": "2026-10-09T08:58:39.614348+00:00",
+      "bytes": 5825,
+      "sha256": "b56bda667141abf042c480bab582ca4f12c887a4c592729ffb0d91eb30a94d45"
+    },
+    {
+      "file": "repo-vask-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vask/readme",
+      "captured_at_utc": "2026-10-09T08:58:37.699309+00:00",
+      "bytes": 258,
+      "sha256": "464bd6eeb6a2fc7d729941783bd7d9c8750983dc9aef9c6eb6064bd432ca9087"
+    },
+    {
+      "file": "repo-vask-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/vask/readme",
+      "captured_at_utc": "2026-10-09T08:58:37.698673+00:00",
+      "bytes": 5340,
+      "sha256": "f3a822a036f4925512f44b5177ebd3c02ee61668fc891b2d7e5a506871618baa"
+    },
+    {
+      "file": "repo-vauth-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vauth/readme",
+      "captured_at_utc": "2026-10-09T08:58:39.058273+00:00",
+      "bytes": 260,
+      "sha256": "25397a755f89a7640dfa095a1f706a375a847348b91050f78afb373d3b81cdb8"
+    },
+    {
+      "file": "repo-vauth-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/vauth/readme",
+      "captured_at_utc": "2026-10-09T08:58:39.057889+00:00",
+      "bytes": 4585,
+      "sha256": "1b6592b901ab7c674684d165951c07f2a2fa64bfa77dc4fd904b3df07c7ed7d8"
+    },
+    {
+      "file": "repo-vboard-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vboard/readme",
+      "captured_at_utc": "2026-10-09T08:58:38.387906+00:00",
+      "bytes": 262,
+      "sha256": "305e08954ff88929cc3a76fe85fefc2b5369f5e0284d3ca90488388c2091c1fd"
+    },
+    {
+      "file": "repo-vboard-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/vboard/readme",
+      "captured_at_utc": "2026-10-09T08:58:38.387382+00:00",
+      "bytes": 3992,
+      "sha256": "5cf8b6699964384fdec5e2d3e807ec306a8c45439859a21338bc466e31f2f03f"
+    },
+    {
+      "file": "repo-vcanteen-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vcanteen/readme",
+      "captured_at_utc": "2026-10-09T08:58:41.127323+00:00",
+      "bytes": 266,
+      "sha256": "4b96917f8d435a2f7dde1a65c47a0a2d3b642cfa53d1778107deb8b2a5491f58"
+    },
+    {
+      "file": "repo-vcanteen-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/vcanteen/readme",
+      "captured_at_utc": "2026-10-09T08:58:41.127142+00:00",
+      "bytes": 1839,
+      "sha256": "695ec65accf093c78eef03cec5bb3771bc8b2cdac8f352430b93c2b0d029a48e"
+    },
+    {
+      "file": "repo-verp-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/verp/readme",
+      "captured_at_utc": "2026-10-09T08:58:35.961278+00:00",
+      "bytes": 258,
+      "sha256": "86675c0e7fddc9e53ed97a7b798577fafb4cbafcf2af81ac211b1e2404251e88"
+    },
+    {
+      "file": "repo-verp-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/verp/readme",
+      "captured_at_utc": "2026-10-09T08:58:35.961117+00:00",
+      "bytes": 8797,
+      "sha256": "c05d9f2b5bf103e528eef5c783c03acf02faedfb05efe4c3d4dbfbb614b96472"
+    },
+    {
+      "file": "repo-vmaps-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vmaps/readme",
+      "captured_at_utc": "2026-10-09T08:58:41.773257+00:00",
+      "bytes": 260,
+      "sha256": "c8e06fca8231aad8106a6deed1f30fdc445441e182e7fa5b0308abf150ca3305"
+    },
+    {
+      "file": "repo-vmaps-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/vmaps/readme",
+      "captured_at_utc": "2026-10-09T08:58:41.773071+00:00",
+      "bytes": 5531,
+      "sha256": "466f2b682d12b4446564e4ba180cd9813b0cbe29b0b063d1bd3e880baf813410"
+    },
+    {
+      "file": "repo-vosslabs.org-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vosslabs.org/readme",
+      "captured_at_utc": "2026-10-09T08:58:37.064397+00:00",
+      "bytes": 274,
+      "sha256": "1b86b33957be120e3d7c55950a8e3760f8626fe112357833abe589f0ed2303f8"
+    },
+    {
+      "file": "repo-vosslabs.org-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/vosslabs.org/readme",
+      "captured_at_utc": "2026-10-09T08:58:37.064028+00:00",
+      "bytes": 4043,
+      "sha256": "595eb615bd4845ebf751185fd92a49e75b194344969813cd871d146dd60aebb5"
+    },
+    {
+      "file": "repo-vprep-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vprep/readme",
+      "captured_at_utc": "2026-10-09T08:58:40.172105+00:00",
+      "bytes": 260,
+      "sha256": "a5328864957d95fc701d1e64e393212fca44a7fda4bcfa6ff5890eebb6dc125e"
+    },
+    {
+      "file": "repo-vprep-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/vprep/readme",
+      "captured_at_utc": "2026-10-09T08:58:40.171880+00:00",
+      "bytes": 1774,
+      "sha256": "1638568767bb0ae128bfed65942c5989138dbc50abce323b74b6142d8246fe4d"
+    },
+    {
+      "file": "repo-vroom-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vroom/readme",
+      "captured_at_utc": "2026-10-09T08:58:40.616415+00:00",
+      "bytes": 260,
+      "sha256": "ed0b11496edf6f576732d8a84a8339d921b0346f6ecafc2bc4b5d47848daac85"
+    },
+    {
+      "file": "repo-vroom-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/vroom/readme",
+      "captured_at_utc": "2026-10-09T08:58:40.616261+00:00",
+      "bytes": 3882,
+      "sha256": "dfe5e9ff227d5a2aeb6a94dca4fbdfcebcb46d65a164d58024a55f20704518c6"
+    },
+    {
+      "file": "repo-vshow-README-metadata.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vshow/readme",
+      "captured_at_utc": "2026-10-09T08:58:42.297876+00:00",
+      "bytes": 260,
+      "sha256": "c1242add633f24f26d8e67a73fad36a5873b30505ad3e4ff6455cefb0d40d6ac"
+    },
+    {
+      "file": "repo-vshow-README.md",
+      "source_url": "https://api.github.com/repos/voss-labs/vshow/readme",
+      "captured_at_utc": "2026-10-09T08:58:42.297723+00:00",
+      "bytes": 1839,
+      "sha256": "695ec65accf093c78eef03cec5bb3771bc8b2cdac8f352430b93c2b0d029a48e"
+    },
+    {
+      "file": "roster-Mandar885.md",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/first-contributions/4020c5863b1f4e664bd8e0597add84fbed21159a/contributors/Mandar885.md",
+      "captured_at_utc": "2026-10-09T09:00:48.860111+00:00",
+      "bytes": 408,
+      "sha256": "ac5a23234bc62da46e124047037a34f0209bc4c848cf4fc3cf49e23d6b365854"
+    },
+    {
+      "file": "roster-OMEE-Y.md",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/first-contributions/4020c5863b1f4e664bd8e0597add84fbed21159a/contributors/OMEE-Y.md",
+      "captured_at_utc": "2026-10-09T09:00:49.387273+00:00",
+      "bytes": 771,
+      "sha256": "ba320abc44d76830eb177a2d6625c446858331a17ed2d4d33b32329e19f80bc6"
+    },
+    {
+      "file": "roster-Rajmali-22.md",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/first-contributions/4020c5863b1f4e664bd8e0597add84fbed21159a/contributors/Rajmali-22.md",
+      "captured_at_utc": "2026-10-09T09:00:49.885849+00:00",
+      "bytes": 370,
+      "sha256": "79af93ff16563adb19b21b4726c5a3d1941b9643ed85ee27bb9378243c8df92f"
+    },
+    {
+      "file": "roster-anup-sawant12.md",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/first-contributions/4020c5863b1f4e664bd8e0597add84fbed21159a/contributors/anup-sawant12.md",
+      "captured_at_utc": "2026-10-09T09:00:50.343720+00:00",
+      "bytes": 648,
+      "sha256": "d96e21738cb7a3bf72eee5eafe7241bf4f830233691de98157a2785729e6e01a"
+    },
+    {
+      "file": "roster-armash66.md",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/first-contributions/4020c5863b1f4e664bd8e0597add84fbed21159a/contributors/armash66.md",
+      "captured_at_utc": "2026-10-09T09:00:50.773978+00:00",
+      "bytes": 366,
+      "sha256": "a86801860e3ca3eee2b6e7bd2ab5ca3bd1f08e5f7c9b65becde340fac6ec9afe"
+    },
+    {
+      "file": "roster-harshalmore31.md",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/first-contributions/4020c5863b1f4e664bd8e0597add84fbed21159a/contributors/harshalmore31.md",
+      "captured_at_utc": "2026-10-09T09:00:51.220627+00:00",
+      "bytes": 2155,
+      "sha256": "410126a1043db8cf70298e14b7436a071a76cd433337036dea89dacc8f26a4d2"
+    },
+    {
+      "file": "roster-shard-c6.md",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/first-contributions/4020c5863b1f4e664bd8e0597add84fbed21159a/contributors/shard-c6.md",
+      "captured_at_utc": "2026-10-09T09:00:51.682684+00:00",
+      "bytes": 404,
+      "sha256": "a1c29fc26546bbfce10ccdc60557454b209575773ee696ac9109270f1fdd2d30"
+    },
+    {
+      "file": "roster-st4rburg3r.md",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/first-contributions/4020c5863b1f4e664bd8e0597add84fbed21159a/contributors/st4rburg3r.md",
+      "captured_at_utc": "2026-10-09T09:00:52.201215+00:00",
+      "bytes": 202,
+      "sha256": "5f267731ad34ec879e71e102f30089d6963fa27675b41f9e957804c9d67ff6e5"
+    },
+    {
+      "file": "site-README.md",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/README.md",
+      "captured_at_utc": "2026-10-09T08:58:32.809124+00:00",
+      "bytes": 4043,
+      "sha256": "595eb615bd4845ebf751185fd92a49e75b194344969813cd871d146dd60aebb5"
+    },
+    {
+      "file": "site-live.css",
+      "source_url": "https://vosslabs.org/_astro/index@_@astro.BshJsaun.css",
+      "captured_at_utc": "2026-10-09T09:00:15.189628+00:00",
+      "bytes": 40843,
+      "sha256": "15ac2cd9efd9c6d7f57ca0e78e89ed49e6659924b3cf135cbfd5b8424d7c3f00"
+    },
+    {
+      "file": "site-live.html",
+      "source_url": "https://vosslabs.org/",
+      "captured_at_utc": "2026-10-09T08:57:47.420292+00:00",
+      "bytes": 52422,
+      "sha256": "402ad5edb0d07a91fb8b35adacbd1a4b31004531fd66772501386f37c09681de"
+    },
+    {
+      "file": "site-public--brand--logo--voss-lockup-horizontal-dark.svg",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/public/brand/logo/voss-lockup-horizontal-dark.svg",
+      "captured_at_utc": "2026-10-09T08:58:34.314402+00:00",
+      "bytes": 424,
+      "sha256": "6acdbb0f313f2c0f90fee24cc64b7a1232df4f8737b05d6d3b10e57f8277569f"
+    },
+    {
+      "file": "site-public--brand--logo--voss-lockup-horizontal-light.svg",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/public/brand/logo/voss-lockup-horizontal-light.svg",
+      "captured_at_utc": "2026-10-09T08:58:34.879686+00:00",
+      "bytes": 424,
+      "sha256": "ce373f674b48669ec6cec1a1fd32e4ed2a6931d17e641977c026229a61dd826d"
+    },
+    {
+      "file": "site-public--brand--logo--voss-mark.svg",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/public/brand/logo/voss-mark.svg",
+      "captured_at_utc": "2026-10-09T08:58:33.280868+00:00",
+      "bytes": 411,
+      "sha256": "870c4f23480ae1c9c865df317ecc064fa8ea97472f7ea3699c004d99ba4fa156"
+    },
+    {
+      "file": "site-public--brand--logo--voss-monogram-dark.svg",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/public/brand/logo/voss-monogram-dark.svg",
+      "captured_at_utc": "2026-10-09T08:58:33.870420+00:00",
+      "bytes": 411,
+      "sha256": "870c4f23480ae1c9c865df317ecc064fa8ea97472f7ea3699c004d99ba4fa156"
+    },
+    {
+      "file": "site-public--brand--social--github-avatar.svg",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/public/brand/social/github-avatar.svg",
+      "captured_at_utc": "2026-10-09T08:58:35.370506+00:00",
+      "bytes": 500,
+      "sha256": "ff2c5285f007e6bc6fe945431b799288fb792e33c6469e5a84aaa438b2bfa780"
+    },
+    {
+      "file": "site-public--brand--tokens--colors.css",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/public/brand/tokens/colors.css",
+      "captured_at_utc": "2026-10-09T08:58:29.236828+00:00",
+      "bytes": 114,
+      "sha256": "7410d12e3c2d17a9446a8e69fba47b2f95d0ca11411ac753b20474f6b4333d9e"
+    },
+    {
+      "file": "site-repository.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vosslabs.org",
+      "captured_at_utc": "2026-10-09T08:57:46.740110+00:00",
+      "bytes": 6191,
+      "sha256": "3b94eb34ad202c2dc54db80b0d2520d84f2b8166d18fb48cf5fa88f4f3d67554"
+    },
+    {
+      "file": "site-src--components--BackgroundFx.astro",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/src/components/BackgroundFx.astro",
+      "captured_at_utc": "2026-10-09T08:58:32.356604+00:00",
+      "bytes": 644,
+      "sha256": "c1c6e60adf50c0cc9a5f633003b339f1992c7a9d73d4af026838938d91967367"
+    },
+    {
+      "file": "site-src--components--Nav.astro",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/src/components/Nav.astro",
+      "captured_at_utc": "2026-10-09T08:58:30.643247+00:00",
+      "bytes": 8288,
+      "sha256": "64c9ddcd57ca18ab4386cb678723334efe1d024ac74fe3837226405498333c10"
+    },
+    {
+      "file": "site-src--components--Projects.astro",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/src/components/Projects.astro",
+      "captured_at_utc": "2026-10-09T08:58:31.688571+00:00",
+      "bytes": 7521,
+      "sha256": "e93bc77b104424cb277eb55020491401855c820638326681593b1308401d0f3d"
+    },
+    {
+      "file": "site-src--components--Team.astro",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/src/components/Team.astro",
+      "captured_at_utc": "2026-10-09T08:58:31.260549+00:00",
+      "bytes": 7874,
+      "sha256": "73cec0cd56e0489f14856b09af0e64036d6fd7d27ac175b55bf05d22850b4dc2"
+    },
+    {
+      "file": "site-src--layouts--Layout.astro",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/src/layouts/Layout.astro",
+      "captured_at_utc": "2026-10-09T08:58:30.124520+00:00",
+      "bytes": 2908,
+      "sha256": "3097eecffe33d47c28394b08cce3749521fbb383a422001e1a19dda4ad791a74"
+    },
+    {
+      "file": "site-src--styles--global.css",
+      "source_url": "https://raw.githubusercontent.com/voss-labs/vosslabs.org/2a7e70a6bddc5b593159d678063cf1f8d1cd54de/src/styles/global.css",
+      "captured_at_utc": "2026-10-09T08:58:29.667570+00:00",
+      "bytes": 7938,
+      "sha256": "54b29fc24f3e3080efeba107143fe9eada143acc222b30205a21e05bb2ba13a3"
+    },
+    {
+      "file": "site-tree.json",
+      "source_url": "https://api.github.com/repos/voss-labs/vosslabs.org/git/trees/main?recursive=1",
+      "captured_at_utc": "2026-10-09T08:57:46.259206+00:00",
+      "bytes": 15884,
+      "sha256": "ac8876cb3c9a98002ea3525dc37f4f0f7997f6520a5b6ace6c8d51001417f86d"
+    }
+  ]
+}

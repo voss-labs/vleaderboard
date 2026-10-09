@@ -1,0 +1,309 @@
+---
+const roles = [
+  {
+    num: '01',
+    id: 'founder',
+    tier: 'Direction',
+    name: 'Founder',
+    body: 'Sets direction. Represents the lab externally. One person, not a committee.',
+  },
+  {
+    num: '02',
+    id: 'core-maintainers',
+    tier: 'Operations',
+    name: 'Core Maintainers',
+    body: 'Trusted contributors with merge access. Run day-to-day operations.',
+  },
+  {
+    num: '03',
+    id: 'maintainers',
+    tier: 'Operations',
+    name: 'Maintainers',
+    body: 'Experienced contributors who review PRs and mentor newcomers.',
+  },
+  {
+    num: '04',
+    id: 'contributors',
+    tier: 'The Lab',
+    name: 'Contributors',
+    body: 'Anyone who has shipped at least one merged contribution.',
+  },
+  {
+    num: '05',
+    id: 'community',
+    tier: 'The Lab',
+    name: 'Community',
+    body: 'All Vidyalankar students interested in open source. The widest circle.',
+  },
+];
+---
+
+<section class="section" id="team">
+  <div class="container">
+    <div class="section-header" data-reveal>
+      <span class="section-eyebrow">05 — People</span>
+      <h2 class="section-title">A flat, contribution-based structure.</h2>
+      <p class="section-desc">
+        No elected positions. Your commits are your credentials.
+      </p>
+    </div>
+
+    <div class="team-grid">
+      <div class="diagram-wrap" data-reveal>
+        <svg
+          viewBox="0 0 400 400"
+          class="diagram"
+          role="img"
+          aria-labelledby="team-diagram-title"
+        >
+          <title id="team-diagram-title">VOSS team structure — concentric tiers</title>
+
+          <circle class="ring" cx="200" cy="200" r="130" fill="none"/>
+
+          <line class="spoke" data-role="core-maintainers" x1="200" y1="200" x2="200" y2="70"/>
+          <line class="spoke" data-role="maintainers" x1="200" y1="200" x2="330" y2="200"/>
+          <line class="spoke" data-role="contributors" x1="200" y1="200" x2="200" y2="330"/>
+          <line class="spoke" data-role="community" x1="200" y1="200" x2="70" y2="200"/>
+
+          <circle class="seg founder" data-role="founder" cx="200" cy="200" r="42"/>
+          <text class="seg-num seg-num-lg" x="200" y="207" text-anchor="middle">01</text>
+
+          <circle class="seg" data-role="core-maintainers" cx="200" cy="70" r="24"/>
+          <text class="seg-num" x="200" y="74" text-anchor="middle">02</text>
+
+          <circle class="seg" data-role="maintainers" cx="330" cy="200" r="24"/>
+          <text class="seg-num" x="330" y="204" text-anchor="middle">03</text>
+
+          <circle class="seg" data-role="contributors" cx="200" cy="330" r="24"/>
+          <text class="seg-num" x="200" y="334" text-anchor="middle">04</text>
+
+          <circle class="seg" data-role="community" cx="70" cy="200" r="24"/>
+          <text class="seg-num" x="70" y="204" text-anchor="middle">05</text>
+        </svg>
+      </div>
+
+      <ul class="role-list" data-reveal>
+        {
+          roles.map((r) => (
+            <li>
+              <button class="role-row" data-role={r.id} type="button">
+                <span class="role-num">{r.num}</span>
+                <span class="role-tier">{r.tier}</span>
+                <span class="role-name">{r.name}</span>
+                <span class="role-body">{r.body}</span>
+              </button>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+</section>
+
+<style>
+  #team .section-header {
+    margin-bottom: 40px;
+    max-width: 720px;
+  }
+
+  #team .section-title {
+    font-size: clamp(1.9rem, 3.6vw, 2.8rem);
+    line-height: 1.05;
+    margin-bottom: 16px;
+  }
+
+  .team-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 360px) 1fr;
+    gap: 72px;
+    align-items: start;
+  }
+
+  .diagram-wrap {
+    position: sticky;
+    top: 96px;
+  }
+
+  .diagram {
+    width: 100%;
+    height: auto;
+    display: block;
+    max-width: 360px;
+  }
+
+  .ring {
+    stroke: var(--border-hover);
+    stroke-width: 1;
+  }
+
+  .spoke {
+    stroke: var(--border);
+    stroke-width: 1;
+    stroke-dasharray: 2 4;
+    transition:
+      stroke 0.2s var(--transition),
+      stroke-dasharray 0.2s var(--transition);
+  }
+
+  .spoke.is-active {
+    stroke: var(--brand-pure);
+    stroke-dasharray: none;
+  }
+
+  .seg {
+    fill: var(--text);
+    stroke: var(--bg);
+    stroke-width: 2;
+    cursor: pointer;
+    transition: fill 0.2s var(--transition);
+  }
+
+  .seg:hover,
+  .seg.is-active {
+    fill: var(--brand-pure);
+  }
+
+  .seg-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    fill: var(--bg);
+    letter-spacing: 0.05em;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .seg-num-lg {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .role-list {
+    list-style: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .role-row {
+    display: grid;
+    grid-template-columns: 32px 100px 1fr;
+    grid-template-areas:
+      'num tier name'
+      '.   .    body';
+    column-gap: 20px;
+    row-gap: 4px;
+    align-items: baseline;
+    width: 100%;
+    text-align: left;
+    padding: 14px 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
+    transition:
+      background-color 0.2s var(--transition),
+      padding-left 0.2s var(--transition);
+  }
+
+  .role-row:hover,
+  .role-row.is-active {
+    padding-left: 8px;
+  }
+
+  .role-row.is-active .role-name {
+    color: var(--brand);
+  }
+
+  .role-num {
+    grid-area: num;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--brand);
+    letter-spacing: 0.14em;
+  }
+
+  .role-tier {
+    grid-area: tier;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  .role-name {
+    grid-area: name;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    transition: color 0.2s var(--transition);
+  }
+
+  .role-body {
+    grid-area: body;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    line-height: 1.45;
+  }
+
+  @media (max-width: 900px) {
+    .team-grid {
+      grid-template-columns: 1fr;
+      gap: 56px;
+    }
+    .diagram-wrap {
+      position: static;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .role-row {
+      grid-template-columns: 32px 1fr;
+      grid-template-areas:
+        'num  tier'
+        'num  name'
+        '.    body';
+      column-gap: 16px;
+    }
+    .role-name {
+      font-size: 1rem;
+    }
+  }
+</style>
+
+<script>
+  function initTeamDiagram(): void {
+    const segs = document.querySelectorAll<SVGElement>('#team .seg[data-role]');
+    const spokes = document.querySelectorAll<SVGElement>('#team .spoke[data-role]');
+    const rows = document.querySelectorAll<HTMLElement>('#team .role-row[data-role]');
+    if (segs.length === 0) return;
+
+    function setActive(role: string | null): void {
+      segs.forEach((s) => s.classList.toggle('is-active', s.dataset.role === role));
+      rows.forEach((r) => r.classList.toggle('is-active', r.dataset.role === role));
+      spokes.forEach((sp) => sp.classList.toggle('is-active', sp.dataset.role === role));
+    }
+
+    segs.forEach((s) => {
+      s.addEventListener('mouseenter', () => setActive(s.dataset.role ?? null));
+      s.addEventListener('mouseleave', () => setActive(null));
+    });
+    rows.forEach((r) => {
+      r.addEventListener('mouseenter', () => setActive(r.dataset.role ?? null));
+      r.addEventListener('mouseleave', () => setActive(null));
+      r.addEventListener('focus', () => setActive(r.dataset.role ?? null));
+      r.addEventListener('blur', () => setActive(null));
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTeamDiagram);
+  } else {
+    initTeamDiagram();
+  }
+</script>

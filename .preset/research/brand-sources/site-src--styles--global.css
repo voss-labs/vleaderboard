@@ -1,0 +1,356 @@
+/* Design tokens — light is default (Vercel/font feel) */
+:root {
+  --bg: #fafaf7;
+  --bg-elevated: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f5f4ef;
+  --border: #e6e4dd;
+  --border-hover: #c9c5bb;
+  --text: #0a0a0a;
+  --text-dim: #525252;
+  --text-muted: #a8a29e;
+  --accent: #0a0a0a;
+  --accent-light: #262626;
+  --accent-glow: rgba(0, 0, 0, 0.06);
+  --success: #0a0a0a;
+  --brand: #c4421d;
+  --brand-light: #e0541e;
+  --brand-pure: #fb7a3c;
+  --font-sans: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --max-width: 1320px;
+  --transition: cubic-bezier(0.4, 0, 0.2, 1);
+  --nav-bg: rgba(255, 255, 255, 0.78);
+  --mobile-nav-bg: rgba(255, 255, 255, 0.96);
+  --hover-bg: rgba(0, 0, 0, 0.035);
+  --code-header-bg: rgba(0, 0, 0, 0.02);
+  --stats-bg: transparent;
+  --card-shadow: none;
+  --hero-code-shadow: none;
+  --code-bg: #f5f4ef;
+  --grain-opacity: 0;
+  /* VS Code Light theme syntax — keyword pulls from logo gradient */
+  --token-comment: #008000;
+  --token-keyword: #7c3aed;
+  --token-bool: #0070c1;
+  --token-string: #a31515;
+  --token-function: #795e26;
+  --token-variable: #001080;
+  --token-property: #001080;
+  --token-punct: var(--text-dim);
+}
+
+[data-theme='dark'] {
+  --bg: #0a0a0a;
+  --bg-elevated: #111111;
+  --bg-card: #111111;
+  --bg-card-hover: #161616;
+  --border: #262626;
+  --border-hover: #404040;
+  --text: #fafafa;
+  --text-dim: #a3a3a3;
+  --text-muted: #525252;
+  --accent: #fafafa;
+  --accent-light: #ffffff;
+  --accent-glow: rgba(255, 255, 255, 0.08);
+  --success: #fafafa;
+  --brand: #fb7a3c;
+  --brand-light: #fda774;
+  --nav-bg: rgba(10, 10, 10, 0.7);
+  --mobile-nav-bg: rgba(10, 10, 10, 0.95);
+  --hover-bg: rgba(255, 255, 255, 0.05);
+  --code-header-bg: rgba(255, 255, 255, 0.02);
+  --code-bg: #161616;
+  --grain-opacity: 0.025;
+  /* VS Code Dark+ theme syntax — keyword pulls from logo gradient */
+  --token-comment: #6a9955;
+  --token-keyword: #a78bfa;
+  --token-bool: #569cd6;
+  --token-string: #ce9178;
+  --token-function: #dcdcaa;
+  --token-variable: #9cdcfe;
+  --token-property: #9cdcfe;
+  --token-punct: #d4d4d4;
+}
+
+/* Reset */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+  font-feature-settings: 'ss01', 'cv11';
+  transition:
+    background-color 0.3s var(--transition),
+    color 0.3s var(--transition);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Container */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* Section primitives — each fills one viewport */
+.section {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  padding: 80px 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  scroll-margin-top: 0;
+}
+
+.section > .container {
+  width: 100%;
+}
+
+.section:first-of-type {
+  border-top: none;
+}
+
+.section-alt {
+  background: var(--bg);
+}
+
+.section-header {
+  margin-bottom: 56px;
+  max-width: 720px;
+}
+
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--brand);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 24px;
+}
+
+.section-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--brand);
+  border-radius: 50%;
+}
+
+.section-title {
+  font-size: clamp(1.9rem, 5.5vw, 4rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  margin-bottom: 20px;
+}
+
+.section-desc {
+  font-size: clamp(0.98rem, 1.6vw, 1.125rem);
+  color: var(--text-dim);
+  line-height: 1.5;
+  max-width: 520px;
+  letter-spacing: -0.01em;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  transition:
+    background-color 0.2s var(--transition),
+    color 0.2s var(--transition),
+    border-color 0.2s var(--transition);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn svg {
+  transition: transform 0.2s var(--transition);
+}
+
+.btn:hover svg:last-child {
+  transform: translateX(3px);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-light);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover {
+  background: var(--hover-bg);
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-large {
+  padding: 14px 28px;
+  font-size: 0.95rem;
+}
+
+/* Inline code */
+code {
+  background: var(--code-bg);
+  color: var(--text);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  border: 1px solid var(--border);
+}
+
+/* Selection */
+::selection {
+  background: var(--brand);
+  color: #fff;
+}
+::-moz-selection {
+  background: var(--brand);
+  color: #fff;
+}
+
+/* Focus rings */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Skip to content (visible only when focused) */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 200;
+  padding: 10px 16px;
+  background: var(--text);
+  color: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transform: translateY(-200%);
+  transition: transform 0.2s var(--transition);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* Reveal-on-scroll */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.5s var(--transition),
+    transform 0.5s var(--transition);
+}
+
+[data-reveal].revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+[data-reveal].card:nth-child(1) { transition-delay: 0s; }
+[data-reveal].card:nth-child(2) { transition-delay: 0.06s; }
+[data-reveal].card:nth-child(3) { transition-delay: 0.12s; }
+
+[data-reveal].step:nth-child(1) { transition-delay: 0s; }
+[data-reveal].step:nth-child(2) { transition-delay: 0.06s; }
+[data-reveal].step:nth-child(3) { transition-delay: 0.12s; }
+[data-reveal].step:nth-child(4) { transition-delay: 0.18s; }
+
+[data-reveal].role:nth-child(1) { transition-delay: 0s; }
+[data-reveal].role:nth-child(2) { transition-delay: 0.05s; }
+[data-reveal].role:nth-child(3) { transition-delay: 0.1s; }
+[data-reveal].role:nth-child(4) { transition-delay: 0.15s; }
+[data-reveal].role:nth-child(5) { transition-delay: 0.2s; }
+
+[data-reveal].value:nth-child(1) { transition-delay: 0s; }
+[data-reveal].value:nth-child(2) { transition-delay: 0.06s; }
+[data-reveal].value:nth-child(3) { transition-delay: 0.12s; }
+[data-reveal].value:nth-child(4) { transition-delay: 0.18s; }
+
+[data-reveal].stat:nth-child(1) { transition-delay: 0s; }
+[data-reveal].stat:nth-child(2) { transition-delay: 0.06s; }
+[data-reveal].stat:nth-child(3) { transition-delay: 0.12s; }
+[data-reveal].stat:nth-child(4) { transition-delay: 0.18s; }
+
+@media (max-width: 768px) {
+  .container { padding: 0 20px; }
+  .section {
+    min-height: auto;
+    padding: 88px 0;
+    display: block;
+  }
+  .section-header { margin-bottom: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,0 +1,9 @@
+# Approved office concept
+
+Built-in imagegen was used to create this design proposal. The user approved the visual direction and requested the final revision below. Image: `office-concept.png`.
+
+This is a concept, not a functional app or verified people/leaderboard data. Modular game assets and interactive scene objects must implement it; do not use the whole screenshot as the application UI. The latest brief also requires independently collapsible side panels and slow autonomous work/visiting animations.
+
+## Final revision prompt
+
+Edit this approved VLeaderboard pixel-art office concept. Required user revision: REMOVE the Faculty room and the Advisor room entirely, including both advisory characters. Replace the entire top office band between the left Projects panel and right Leaderboard panel with TWO balanced adjacent executive rooms connected to the hallway: LEFT room sign 'Maintainer', desk name 'Harshal More'; RIGHT room sign 'Co-Maintainer', desk name 'Kanchan Chavan'. Harshal retains an organizer desk, planning board, plants and dark-haired developer sprite; Kanchan has a similarly well-appointed coordination desk, planning board, books and a distinct friendly developer sprite, no assumed likeness. Each of the two rooms has one character and a visible doorway opening toward the core-team corridor. Use the recovered space for these two generous rooms. There must be NO Faculty/Advisor text or room anywhere. Preserve everything below the top band: Core team room, four repository rooms verp/vprep/vroom/vauth, open-contributors commons, all furniture, side projects list, leaderboard with placeholder contributors and Preview data, PR opened Example event bubble. Preserve the elevated orthographic top-down 16-bit pixel-art style, official orange #FB7A3C signage, ivory walls, dark game panels, consistent scale, and landscape framing. Keep 'Design concept' in header. This is a concept with placeholder characters and no real ranking data.

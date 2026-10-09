@@ -1,0 +1,76 @@
+---
+import '../styles/global.css';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import BackgroundFx from '../components/BackgroundFx.astro';
+import Cursor from '../components/Cursor.astro';
+import PostHog from '../components/posthog.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'VOSS — Vidyalankar Open Source Software Labs',
+  description = 'A student-run open-source lab at Vidyalankar Institute of Technology, Mumbai. We build real digital infrastructure — collaboratively, transparently, and in public.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon/favicon.svg" />
+    <link rel="alternate icon" type="image/svg+xml" sizes="16x16" href="/brand/favicon/favicon-16.svg" />
+    <link rel="apple-touch-icon" href="/brand/favicon/favicon.svg" />
+    <link rel="manifest" href="/brand/favicon/site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap"
+    />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/brand/social/og-default.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/brand/social/og-default.svg" />
+    <meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+
+    <script is:inline>
+      (function () {
+        try {
+          var saved = localStorage.getItem('voss-theme');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (saved === 'dark' || (!saved && prefersDark)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <PostHog />
+  </head>
+  <body>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <BackgroundFx />
+    <Cursor />
+    <Nav />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+
+    <script>
+      import '../scripts/site.ts';
+    </script>
+  </body>
+</html>

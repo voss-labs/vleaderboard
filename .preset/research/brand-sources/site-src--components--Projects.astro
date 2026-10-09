@@ -1,0 +1,288 @@
+---
+const BLOCKLIST = ['.github'];
+const ORG = 'voss-labs';
+const MAX = 6;
+
+interface GhRepo {
+  name: string;
+  description: string | null;
+  html_url: string;
+  language: string | null;
+  stargazers_count: number;
+  pushed_at: string;
+  archived: boolean;
+  fork: boolean;
+  private: boolean;
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86_400_000);
+  if (days < 1) return 'TODAY';
+  if (days === 1) return '1D AGO';
+  if (days < 30) return `${days}D AGO`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}MO AGO`;
+  return `${Math.floor(days / 365)}Y AGO`;
+}
+
+const headers: Record<string, string> = {
+  'User-Agent': 'voss-website',
+  Accept: 'application/vnd.github+json',
+};
+const token = import.meta.env.GITHUB_TOKEN;
+if (token) headers['Authorization'] = `Bearer ${token}`;
+
+let repos: GhRepo[] = [];
+let fetchError = false;
+try {
+  const res = await fetch(`https://api.github.com/orgs/${ORG}/repos?per_page=100&sort=updated`, { headers });
+  if (res.ok) {
+    const data = (await res.json()) as GhRepo[];
+    repos = data
+      .filter((r) => !r.archived && !r.fork && !r.private)
+      .filter((r) => !BLOCKLIST.includes(r.name))
+      .slice(0, MAX);
+  } else {
+    fetchError = true;
+  }
+} catch {
+  fetchError = true;
+}
+---
+
+{
+  repos.length > 0 && (
+    <section class="section" id="projects">
+      <div class="container">
+        <div class="section-header" data-reveal>
+          <span class="section-eyebrow">02 — Shipped</span>
+          <h2 class="section-title">Things we've built.</h2>
+          <p class="section-desc">
+            Live repositories under <code>github.com/{ORG}</code>. Pulled fresh on every deploy. Star,
+            fork, or contribute — every one is open source.
+          </p>
+        </div>
+
+        <div class="rows">
+          {repos.map((r, i) => (
+            <a class="row" href={r.html_url} target="_blank" rel="noopener noreferrer" data-reveal>
+              <div class="row-meta">
+                <span class="row-num">{String(i + 1).padStart(2, '0')}</span>
+                <span class="row-lang">{r.language ?? '—'}</span>
+              </div>
+              <div class="row-body">
+                <div class="row-head">
+                  <h3>{r.name}</h3>
+                  <span class="row-stars" aria-label={`${r.stargazers_count} stars`}>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z" />
+                    </svg>
+                    {r.stargazers_count}
+                  </span>
+                </div>
+                <p>{r.description ?? 'No description yet.'}</p>
+                <div class="row-foot">
+                  <span class="row-updated">UPDATED {relativeTime(r.pushed_at)}</span>
+                  <span class="row-arrow" aria-hidden="true">↗</span>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+
+        <div class="row-cta" data-reveal>
+          <a class="link" href={`https://github.com/${ORG}`} target="_blank" rel="noopener noreferrer">
+            View all on GitHub <span aria-hidden="true">→</span>
+          </a>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .rows {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--border);
+    transition: border-color 0.35s var(--transition);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 220px) 1fr;
+    gap: 40px;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: start;
+    text-decoration: none;
+    color: inherit;
+    transition:
+      border-color 0.35s var(--transition),
+      background-color 0.2s var(--transition);
+  }
+
+  .row:hover {
+    background: var(--hover-bg);
+  }
+
+  .row:hover .row-arrow {
+    transform: translate(2px, -2px);
+    color: var(--brand);
+  }
+
+  .row:hover h3 {
+    color: var(--brand);
+  }
+
+  .row-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 6px;
+  }
+
+  .row-num {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--brand);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 500;
+  }
+
+  .row-lang {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .row-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .row-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    max-width: 720px;
+  }
+
+  .row-head h3 {
+    font-family: var(--font-mono);
+    font-size: clamp(1.1rem, 1.6vw, 1.4rem);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    transition: color 0.2s var(--transition);
+  }
+
+  .row-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .row-body p {
+    color: var(--text-dim);
+    font-size: 0.96rem;
+    line-height: 1.5;
+    max-width: 680px;
+  }
+
+  .row-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+    max-width: 720px;
+  }
+
+  .row-updated {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  .row-arrow {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    color: var(--text-dim);
+    transition:
+      transform 0.2s var(--transition),
+      color 0.2s var(--transition);
+  }
+
+  .row-cta {
+    padding-top: 32px;
+    text-align: left;
+  }
+
+  .link {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    transition:
+      color 0.2s var(--transition),
+      border-color 0.2s var(--transition);
+  }
+
+  .link:hover {
+    color: var(--brand);
+    border-color: var(--brand);
+  }
+
+  @media (max-width: 768px) {
+    .row {
+      grid-template-columns: 1fr;
+      gap: 14px;
+      padding: 32px 0;
+    }
+    .row-meta {
+      flex-direction: row;
+      align-items: center;
+      gap: 14px;
+      padding-top: 0;
+    }
+  }
+</style>
+
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#projects .row').forEach(function (row) {
+      row.addEventListener('click', function () {
+        var name = row.querySelector('h3')?.textContent?.trim() || '';
+        var lang = row.querySelector('.row-lang')?.textContent?.trim() || '';
+        var href = row.getAttribute('href') || '';
+        window.posthog?.capture('project_repo_clicked', {
+          repo_name: name,
+          repo_language: lang,
+          repo_url: href,
+        });
+      });
+    });
+
+    var viewAllLink = document.querySelector('#projects .row-cta .link');
+    if (viewAllLink) {
+      viewAllLink.addEventListener('click', function () {
+        window.posthog?.capture('view_all_repos_clicked', { location: 'projects' });
+      });
+    }
+  });
+</script>

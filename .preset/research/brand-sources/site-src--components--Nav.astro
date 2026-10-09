@@ -1,0 +1,357 @@
+---
+const links = [
+  { href: '#about', label: 'About' },
+  { href: '#projects', label: 'Projects' },
+  { href: '#contribute', label: 'Contribute' },
+  { href: '#team', label: 'Team' },
+  { href: '#values', label: 'Values' },
+];
+---
+
+<nav class="nav" id="nav">
+  <div class="container nav-container">
+    <div class="nav-inner">
+      <a href="/" class="logo" aria-label="VOSS home">
+        <span class="logo-text">VOSS</span>
+        <span class="logo-accent" aria-hidden="true"></span>
+      </a>
+
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+
+      <ul class="nav-links" id="navLinks">
+        {
+          links.map((link) => (
+            <li>
+              <a href={link.href} class="nav-link">
+                {link.label}
+              </a>
+            </li>
+          ))
+        }
+        <li class="nav-divider" aria-hidden="true"></li>
+        <li>
+          <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
+            <svg
+              id="moonIcon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg
+            >
+            <svg
+              id="sunIcon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              style="display:none"
+              ><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line
+                x1="12"
+                y1="21"
+                x2="12"
+                y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line
+                x1="18.36"
+                y1="18.36"
+                x2="19.78"
+                y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line
+                x1="21"
+                y1="12"
+                x2="23"
+                y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line
+                x1="18.36"
+                y1="5.64"
+                x2="19.78"
+                y2="4.22"></line></svg
+            >
+          </button>
+        </li>
+        <li>
+          {/*
+            A link, deliberately — not an embedded account page.
+
+            The session cookie is scoped to accounts.vosslabs.org. Serving the
+            account UI from this origin would expose every student's session
+            token to every script on the marketing site, which changes often,
+            takes contributions from newcomers, and will eventually want an
+            analytics tag or an embed. One XSS here would become a full
+            compromise of the identity provider.
+
+            Google does exactly this: gmail.com links out to
+            myaccount.google.com rather than hosting it.
+          */}
+          <a href="https://accounts.vosslabs.org/account" class="nav-link">
+            Account
+          </a>
+        </li>
+        <li>
+          <a href="https://github.com/voss-labs" class="nav-link nav-cta" target="_blank" rel="noopener noreferrer">
+            GitHub <span aria-hidden="true">→</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<style>
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: transparent;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 0.3s var(--transition);
+  }
+
+  .nav.nav-scrolled {
+    background: var(--bg);
+  }
+
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    width: 100%;
+  }
+
+  .logo {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .logo-text {
+    font-family: var(--font-sans);
+    font-weight: 800;
+    font-size: 1.25rem;
+    letter-spacing: -0.045em;
+    line-height: 1;
+  }
+
+  .logo-accent {
+    width: 10px;
+    height: 10px;
+    background: var(--brand-pure);
+    display: block;
+    margin-bottom: 3px;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    list-style: none;
+  }
+
+  .nav-divider {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+
+  .nav-link {
+    position: relative;
+    display: inline-block;
+    padding: 6px 0;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: color 0.2s var(--transition);
+  }
+
+  .nav-link:hover {
+    color: var(--text);
+  }
+
+  .nav-link.is-active {
+    color: var(--brand);
+  }
+
+  .nav-link.is-active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--brand);
+  }
+
+  .nav-cta {
+    color: var(--text);
+  }
+
+  .nav-cta.is-active::after {
+    display: none;
+  }
+
+  .nav-cta:hover {
+    color: var(--brand);
+  }
+
+  .menu-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .menu-toggle:focus {
+    outline: none;
+  }
+
+  .menu-toggle:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 4px;
+  }
+
+  .menu-toggle span {
+    display: block;
+    width: 22px;
+    height: 1.5px;
+    background: var(--text);
+    transition: all 0.3s;
+  }
+
+  .menu-toggle.open span:nth-child(1) {
+    transform: translateY(6.5px) rotate(45deg);
+  }
+  .menu-toggle.open span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  .menu-toggle.open span:nth-child(3) {
+    transform: translateY(-6.5px) rotate(-45deg);
+  }
+
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: color 0.2s var(--transition);
+    padding: 0;
+  }
+
+  .theme-toggle:hover {
+    color: var(--text);
+  }
+
+  .theme-toggle svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .nav-link:focus-visible,
+  .theme-toggle:focus-visible,
+  .menu-toggle:focus-visible {
+    outline-offset: 4px;
+  }
+
+  @media (max-width: 768px) {
+    .nav-links {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      background: var(--bg);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      padding: 96px 24px 40px;
+      gap: 0;
+      overflow-y: auto;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-12px);
+      transition:
+        opacity 0.3s var(--transition),
+        transform 0.3s var(--transition);
+    }
+
+    .nav-links.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .nav-link {
+      padding: 22px 0;
+      width: 100%;
+      font-size: 0.95rem;
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-link.is-active::after {
+      left: 0;
+      right: auto;
+      width: 32px;
+      bottom: -1px;
+    }
+
+    .nav-divider {
+      display: none;
+    }
+
+    .nav-cta {
+      margin-top: 24px;
+      border-bottom: none;
+    }
+
+    .theme-toggle {
+      width: 100%;
+      height: 64px;
+      justify-content: flex-start;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .menu-toggle {
+      display: flex;
+      position: relative;
+      z-index: 210;
+    }
+  }
+
+  :global(body.menu-open) {
+    overflow: hidden;
+  }
+</style>
+
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', function () {
+    var githubLink = document.querySelector('.nav-cta[href*="github.com"]');
+    if (githubLink) {
+      githubLink.addEventListener('click', function () {
+        window.posthog?.capture('nav_github_clicked', { location: 'nav' });
+      });
+    }
+  });
+</script>
