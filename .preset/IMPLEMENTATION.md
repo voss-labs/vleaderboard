@@ -1,6 +1,6 @@
 # Implementation: VLeaderboard
 
-2026-10-09. Project `proj-f983e77652b4bb2f`. Implementation phase. This artifact covers the authorized animated visual slice and bounded public GitHub snapshots. It does not describe a production live-event release.
+2026-10-09. Project `proj-f983e77652b4bb2f`. Implementation record updated after passing independent review and QA at application commit `84638c3e51991cb549371d5e9d45e517ad09d98e`. This artifact covers the authorized animated visual slice and bounded public GitHub snapshots. It does not describe a production live-event release.
 
 ## Modules built
 
@@ -21,6 +21,7 @@
 - All rooms visits use a dedicated repository scene for off-main catalog entries. Returning restores the main camera instead of adding a fifth main room. Resize preserves camera center/scale. Pointer and touch drag, wheel/pinch, zoom, fit, focus, selection and follow use the shared bridge; manual camera commands exit follow.
 - Ambient simulation starts immediately with staggered work motion, changing monitors, DevRel slides, a shared planning table and presentation/planning poses. Simulation/rendering is capped at 30 FPS. Simulated work bubbles also enter the accessible activity feed. Source-backed historical events are not replayed as new events.
 - One slow traveler follows orthogonal room-door/corridor waypoints, visiting core and maintainer before returning. Seeded natural visits begin after 45–120 visible minutes and repeat after 90–180 minutes. The labeled Tour demonstrates that path at 19 logical pixels per second with destination and door pauses; it is disabled with visible context when no eligible main-floor actor exists.
+- Per-person visit deadlines persist across scene rebuilds. Completion and interruption reschedule visits, and newly observed actors schedule relative to current simulation time; room navigation cannot bypass the repeat cooldown.
 - Pause, reduced motion and hidden tabs freeze simulation and discard elapsed inactive wall time. Selection, manual camera operations and resizing still render on demand. Reduced motion returns an active traveler to its seat.
 
 ### React interface and delivery
@@ -35,16 +36,20 @@
 
 ## Tests
 
-Evidence is in `DATA-WORK.md`, `SHELL-WORK.md`, `WORLD-WORK.md`, the domain/motion test files and the parent's browser verification. This integration review did not redundantly rerun already-passing owner checks.
+Current evidence is in `BROWSER-CHECKS.md`, passing independent `REVIEW.md` and `QA.md`, the owner work reports and domain/motion tests. QA tested application commit `84638c3e51991cb549371d5e9d45e517ad09d98e`. This documentation update did not rerun checks or change application code.
 
-- Latest owner report: `npm test` passes all 21 tests, comprising 14 data/snapshot tests and seven motion/layout tests. Coverage includes deterministic selection, source separation, ties, bots, deduplication, UTC boundaries, unknown counts, public author attribution, pagination limits, concurrent reads, stale/backoff/recovery, resource-route errors, hierarchy/stations, focused commons overflow, orthogonal visit paths, slow movement/holds, hidden-time discard, seeded quiet intervals and 30 FPS frame gating.
-- Latest owner reports confirm strict `npm run typecheck` and `git diff --check` pass after integration corrections. Production `npm run build` previously passed client and SSR bundles; parent owns the final build after the latest corrections. All inspected source modules are below 400 lines.
+- Independent QA confirms `npm test` passes all 22 tests, comprising 14 data/snapshot tests and eight motion/layout tests. Coverage includes deterministic selection, source separation, ties, bots, deduplication, UTC boundaries, unknown counts, public author attribution, pagination limits, concurrent reads, stale/backoff/recovery, resource-route errors, hierarchy/stations, focused commons overflow, orthogonal visit paths, slow movement/holds, hidden-time discard, seeded quiet intervals, 30 FPS frame gating and persistent visit cooldowns.
+- Parent and independent QA confirm strict `npm run typecheck` and final production `npm run build` pass, including client and SSR bundles. Review and owner checks confirm `git diff --check` passes. All reviewed source modules are below 400 lines.
 - Read-only genuine-data smoke captured `2026-10-09T09:36:08Z` returned the complete 12-repository catalog and vroom coverage of 12 PRs plus 19 issue-only records. The snapshot remained GitHub/partial, contained no preview people and no fresh historical events. Genuine recency selected vshow, vmaps, vroom and first-contributions.
 - Initial sandbox DNS failure produced genuine/unavailable state with no fixture substitution; a reviewed read-only public-network smoke subsequently passed.
 - Integration source review confirmed shared exports and `SceneProps` compatibility, pure data/renderer separation, bounded four-room composition, genuine assignment unknowns and camera-return behavior.
 - A focused offline mock reproduced a capture-time mismatch: a catalog cached at 08:00 with work refreshed at 08:06 omitted a PR merged at 08:03 because the board used the older catalog capture as its upper bound. Data added a regression which failed before the fix and passes afterward: the refreshed merge counts once without a catalog refetch, and a subsequent failed request retains the successful capture and work.
-- Parent browser verification is ongoing. Desktop/mobile visuals, panel collapse, directory navigation, inspection/follow, Tour pacing, pause/reduced motion and browser console behavior are not claimed passed by this artifact yet.
-- Source verification confirms all owner integration corrections below are present. The 21-test/typecheck results include those corrections. Final production build, independent review and browser/visual QA remain the parent's next verification steps.
+- Parent browser verification passed the rendered office hierarchy/artwork, independent panel collapse/reopen, searchable All rooms and off-floor return, person inspection/follow, labeled slow Tour, pause with usable zoom, period/coverage details, preview/public source separation and source-backed repository links. Actual 320px overflow was fixed and rechecked; the final active tab had no browser errors/warnings.
+- Independent QA passed desktop at actual CSS 1512×805 and mobile at 390×844 and 320×740 without horizontal overflow. Keyboard search, Tab/Shift+Tab focus trapping, selection, Escape/opener restoration, empty search, off-floor navigation and mobile drawers worked. Two paused canvas-only screenshots were byte-identical; manual zoom cleared Follow.
+- Independent QA passed API boundaries: preview GET returned 200 with 12 repositories and four main rooms, invalid modes/IDs/URLs returned structured 400 JSON, all responses disabled browser caching, and POST returned 405.
+- The independent actual-scene harness passed pause, reduced motion, hidden-state freeze, manual rendering, prevented/canceled visits and destruction cleanup. OS preference switching, real touch/pinch, physical devices, vendor/GPU compatibility and GPU-loss recovery were not exercised.
+- Independent review found one P2 cooldown defect: an off-floor round trip after a natural visit bypassed the repeat interval. Persistent per-person deadlines fixed it; a focused actual-scene reproduction verified the next visit after 167.984 minutes, and the added regression covers deadline retention and range. Review verdict is PASS with no open blocking findings; independent QA verdict is PASS for this local slice.
+- All integration corrections below are verified in the reviewed source and final checks. No implementation, review or local-slice QA blocker remains.
 
 ## Deviations
 
@@ -63,11 +68,12 @@ Evidence is in `DATA-WORK.md`, `SHELL-WORK.md`, `WORLD-WORK.md`, the domain/moti
 - Latest successful catalog/work capture fixes ranking after work refreshes inside the longer catalog TTL; stale requests retain the successful capture.
 - HTTP-200 domain outages now expose reachable mobile retry plus source-message and retry-after details; healthy mobile snapshots can also refresh through the source dialog.
 - A frame gate now caps scene rendering at 30 FPS, and async cancellation checks precede attachment/listener registration. No persistent leak or browser failure was claimed from the initial source concern.
+- Review's cooldown finding is resolved with persistent per-person deadlines, independently checked through the actual scene and covered by a regression. The narrow mobile header correction also passed measured 320px QA.
 
 ### Baseline drift
 
 - Architecture gate baseline: `0f2c2d47255633f5b4b159f56570c2db4dd657d4` on `codex/animated-office`.
-- At review, HEAD still equals that baseline; no implementation commits exist after it. The implementation is uncommitted work in the shared checkout.
-- Tracked drift replaces starter home/root/styles and welcome assets, adds snapshot route wiring, adds Pixi and its lockfile entries, enables TypeScript extension imports for Node tests, removes starter configuration comments and updates delivery exclusions/docs.
-- New untracked implementation files include domain data/cache/client modules, React panels/dialogs/inspection, Pixi world/art/motion modules, public atlases, focused styles, tests, environment/CI files and implementation process artifacts. The existing untracked `.agents/` directory was not introduced or changed by this integration owner.
-- No commit, submission, human gate approval, deployment or external write was performed by this owner. Parent retains phase advancement and final verification responsibility.
+- Implemented/reviewed source is committed at current HEAD `84638c3e51991cb549371d5e9d45e517ad09d98e`. The original implementation anchor was `092e3d035f982a2adecdc6ec1550f36a82b2e8dd`; subsequent source changes were the reviewed persistent cooldown correction/regression and mobile header sizing.
+- Cumulative committed drift from architecture replaces starter home/root/styles and welcome assets, adds snapshot route wiring, adds Pixi and its lockfile entries, enables TypeScript extension imports for Node tests, removes starter configuration comments and updates delivery exclusions/docs. It also adds the domain/cache modules, React interface, Pixi art/motion modules, public atlases, tests and environment/CI files described above.
+- Current HEAD equals the code-review anchor `84638c3e51991cb549371d5e9d45e517ad09d98e`; no application or test working-tree drift exists. This update changes only the implementation artifact. Remaining untracked items are the pre-existing `.agents/` directory and independent QA report/playback evidence.
+- No app/test edits, reruns, commits, submissions, human gate approvals, deployment or external writes were performed by this documentation update. Parent retains phase advancement; the delivery boundaries above remain unchanged.
