@@ -13,20 +13,21 @@ The art direction follows the supplied kitchen's elevated orthographic perspecti
 ```text
 Projects          Maintainer: Harshal | Co-Maintainer: Kanchan   Leaderboard
 panel                        shared corridor                    panel
-                     Core team and lead workstations
+                     Engineering | Community | Research
                            connected corridor
                      Repository room | Repository room
                      Repository room | Repository room
-                         Open contributors commons
+                     Open contributors commons | DevRel studio
 ```
 
 - Maintainer room: Harshal's organizer desk, planning wall, VOSS sign.
 - Co-Maintainer room: Kanchan's dedicated room beside the Maintainer, per Boss's approved revision.
-- Core room: core developers, Engineering, Community, DevRel and Research leads from the supplied hierarchy. Give each person a recognizable sprite and a readable inspect panel; full names need not crowd the map continuously.
+- Core room: three distinct tables for Engineering (including core developers), Community and Research. Give each person a recognizable sprite and a readable inspect panel; full names need not crowd the map continuously.
 - No faculty or advisor rooms or characters, per Boss's approved revision.
-- Project rooms: a room per active configured repository, a lead station and four or five member desks. Add room rows as projects grow, with pan/zoom and a fit-to-office control. The entire GitHub catalog need not become twelve miniature rooms on the first screen.
+- Project rooms: exactly four active repository rooms on the main floor, a lead station and four or five member desks each. An All rooms directory lists the full catalog and allows visiting every repository room. Pan/zoom and return-to-main-floor controls keep exploration usable.
 - Open commons: contributors without a confirmed team assignment still appear and receive their own activity.
-- Desktop side panels: opaque pixel-framed project directory left, contribution board right, leaving the office readable.
+- DevRel room beside the commons: Himanshu and Parth presenting slides, planning outreach and campaigns.
+- Desktop side panels: independently collapsible opaque pixel-framed project directory left, contribution board right, leaving the office readable.
 - Mobile: usable focused viewport with touch pan, accessible project/person lists, and panels opening as drawers. Do not shrink all room text to fit a phone.
 
 ## Brand and art
@@ -43,7 +44,7 @@ Create original reusable wall/floor tiles, furniture, and character sprites at a
 | PixiJS scene + React panels | Matches layered sprites, animation and camera interaction | Explicit client lifecycle and accessible parallel controls | Recommended for this brief |
 | Phaser scene + React panels | Full game systems available | Adds game machinery spectator mode does not need | Not recommended for current scope |
 
-Preserve the current React Router, React, TypeScript and Tailwind foundation. The recommendation is to add a focused rendering layer rather than migrate frameworks. Final module/data/API design belongs to the architecture agent after product approval.
+Preserve the current React Router, React, TypeScript and Tailwind foundation. Boss selected PixiJS plus React on 2026-10-09. Final module/data/API design belongs to the architecture agent after product approval.
 
 ## Data behavior
 
@@ -90,7 +91,7 @@ All specialists use `gpt-6.1-sol` with `xhigh` effort, as requested. Each phase 
 
 ## Remaining information
 
-Confirm rendering direction before implementation. Later, obtain the active project-to-leader/member mapping and settle ranking, public visibility and hosting. The roster can begin with names from the supplied diagram, but names are not sufficient to bind GitHub identities.
+Rendering direction and visual scope are approved. Later, obtain the active project-to-leader/member mapping and settle real ranking, public visibility and hosting. The roster can begin with names from the supplied diagram, but names are not sufficient to bind GitHub identities.
 
 ## Research
 
