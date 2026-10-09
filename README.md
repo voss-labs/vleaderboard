@@ -1,87 +1,46 @@
-# Welcome to React Router!
+# VLeaderboard
 
-A modern, production-ready template for building full-stack React applications using React Router.
+An animated spectator office for VOSS Labs, built with React Router SSR, React, Tailwind CSS and PixiJS. The pixel world handles camera and decorative motion; accessible HTML panels handle project discovery, people, activity and merged-PR counts.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Run locally
 
-## Features
+Use Node.js 24 or newer.
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
-
-## Getting Started
-
-### Installation
-
-Install the dependencies:
-
-```bash
-npm install
-```
-
-### Development
-
-Start the development server with HMR:
-
-```bash
+```sh
+npm ci
 npm run dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+Open [localhost:5173](http://localhost:5173). The initial page uses a deterministic preview scenario dated 9 October 2026. Named core roles are confirmed configuration. Project teams, work items, counts, visits and work messages in preview are simulated. Synthetic PRs and issues have no GitHub links.
 
-## Building for Production
-
-Create a production build:
-
-```bash
+```sh
+npm test
+npm run typecheck
 npm run build
+npm run start
 ```
 
-## Deployment
+The production server serves `build/server/index.js`. CI runs the tests, TypeScript check and production build on Node 24.
 
-### Docker Deployment
+## Office controls
 
-To build and run using Docker:
+Collapse either side panel to give the office more space. Drag to pan, use the zoom controls and Fit to frame the scene, and select people or rooms to inspect them. All rooms includes the complete captured repository catalog; off-floor projects open a dedicated room view. Follow tracks a selected character until a manual camera action. Pause and reduced motion stop decorative work and travel while keeping the information accessible. Simulated visit demonstrates ambient movement without claiming a person's location or online status.
 
-```bash
-docker build -t my-app .
+## Public GitHub snapshots
 
-# Run the container
-docker run -p 3000:3000 my-app
+`GET /api/snapshot?mode=preview|github&repositoryId=github:<repository-id>` returns the serializable version-1 office snapshot. `repositoryId` is optional; genuine mode fetches work for the first main room by default. Only public repositories discovered under `voss-labs` are eligible. Invalid modes or IDs return HTTP 400 JSON. Upstream errors return HTTP 200 with explicit unavailable or stale source state. Responses use `Cache-Control: no-store`.
+
+Public reads work without credentials. An optional `GITHUB_TOKEN` in the server process environment increases the available request budget. `.env.example` documents the variable; supply it through the runtime's environment configuration. Tokens remain in server-only modules and never enter snapshot JSON. No webhook route, private repository access or live presence integration is included.
+
+The catalog follows at most three pages of 100 repositories and is cached for ten minutes. Selected-room work reads one page of up to 100 pull requests and one page of open issues, cached for five minutes. Each request has an eight-second timeout. Concurrent reads are coalesced, rate-limit retries use GitHub's response headers, and errors preserve the last valid data. Cache is bounded to the captured catalog and its work and clears on process restart. Untouched work remains unknown, rather than appearing as zero. Selecting a room fetches its work; previously fetched rooms remain in board coverage.
+
+The board counts authored merged PRs in UTC calendar-month, exact rolling-30-day or available-history windows. The upper bound excludes the capture time itself. Bots and duplicate PR IDs are excluded, equal counts share competition ranks, and review counts remain unknown until reviews are fetched. Genuine mode always discloses bounded repository/history coverage. A PR count describes captured GitHub work, rather than a complete measure of a person's contribution.
+
+## Build container
+
+```sh
+docker build -t vleaderboard .
+docker run --rm -p 3000:3000 vleaderboard
 ```
 
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+The existing Dockerfile uses Node 24 and the SSR server. Environment files, Git history, process artifacts and local credentials are excluded from its build context. A hosting destination and webhook delivery infrastructure are not configured.

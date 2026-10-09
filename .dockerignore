@@ -1,4 +1,12 @@
 .react-router
 build
 node_modules
-README.md
+.git
+.env*
+.aws
+.codex
+.agents
+.preset
+tests
+*.log
+.DS_Store

@@ -1,0 +1,121 @@
+export type DataMode = "preview" | "github";
+export type Period = "month" | "30d" | "all";
+export type TableId = "engineering" | "community" | "research";
+export type Selection = { kind: "person" | "repository"; id: string } | null;
+export type WorldView = { kind: "office" } | { kind: "repository"; repositoryId: string };
+export type SourceState = {
+  mode: DataMode;
+  status: "ready" | "partial" | "stale" | "unavailable";
+  fetchedAt: string | null;
+  message: string;
+  retryAt: string | null;
+};
+export type Person = {
+  id: string;
+  name: string;
+  role: string;
+  kind: "named" | "preview" | "github";
+  github: { id: number; login: string; url: string } | null;
+  homeRoomId: string;
+  table: TableId | null;
+  repositoryIds: string[];
+  assignment: "confirmed" | "preview" | "unknown";
+  palette: number;
+};
+export type Repository = {
+  id: string;
+  githubId: number;
+  name: string;
+  fullName: string;
+  description: string | null;
+  url: string;
+  language: string | null;
+  archived: boolean;
+  fork: boolean;
+  pushedAt: string | null;
+  leadPersonId: string | null;
+  memberPersonIds: string[];
+  assignment: "confirmed" | "preview" | "unknown";
+};
+export type WorkItem = {
+  id: string;
+  repositoryId: string;
+  number: number;
+  title: string;
+  url: string;
+  kind: "pull-request" | "issue";
+  state: "open" | "closed" | "merged";
+  authorPersonId: string;
+  assigneePersonIds: string[];
+  requestedReviewerPersonIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  mergedAt: string | null;
+  isBot: boolean;
+};
+export type ActivityEvent = {
+  id: string;
+  personId: string;
+  repositoryId: string | null;
+  kind: "opened" | "merged" | "closed" | "reviewed" | "committed" | "planning" | "visit";
+  text: string;
+  occurredAt: string;
+  source: "preview" | "github";
+  url: string | null;
+  fresh: boolean;
+};
+export type RepositoryWork = {
+  repositoryId: string;
+  status: "ready" | "partial" | "stale" | "unavailable";
+  fetchedAt: string | null;
+  pulls: WorkItem[] | null;
+  issues: WorkItem[] | null;
+  message: string;
+};
+export type OfficeSnapshot = {
+  version: 1;
+  source: SourceState;
+  people: Person[];
+  repositories: Repository[];
+  mainRepositoryIds: string[];
+  roomSelectionBasis: string;
+  catalogComplete: boolean;
+  work: RepositoryWork[];
+  activity: ActivityEvent[];
+};
+export type LeaderboardRow = {
+  personId: string;
+  rank: number;
+  merged: number;
+  opened: number;
+  reviews: number | null;
+};
+export type Leaderboard = {
+  rows: LeaderboardRow[];
+  period: Period;
+  from: string | null;
+  to: string;
+  coveredRepositoryIds: string[];
+  complete: boolean;
+  label: string;
+};
+export type CameraCommand = {
+  nonce: number;
+  kind: "fit" | "zoom-in" | "zoom-out" | "focus-selection";
+};
+export type SceneProps = {
+  snapshot: OfficeSnapshot;
+  selection: Selection;
+  view: WorldView;
+  followedPersonId: string | null;
+  paused: boolean;
+  reducedMotion: boolean;
+  cameraCommand: CameraCommand | null;
+  previewVisitNonce: number;
+  onSelect: (selection: Selection) => void;
+  onFollowChange: (personId: string | null) => void;
+  onPreviewEvent: (event: ActivityEvent) => void;
+  onVisitActiveChange: (active: boolean) => void;
+  onReady: () => void;
+  onError: (message: string) => void;
+};
