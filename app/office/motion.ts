@@ -12,6 +12,10 @@ export function nextVisitSeconds(seed: number, returning = false): number {
   return (returning ? 90 : 45) * 60 + (seed % ((returning ? 90 : 75) * 60));
 }
 
+export function scheduledVisit(seed: number, seconds: number, existing: number | null = null, returning = false): number {
+  return existing ?? seconds + nextVisitSeconds(seed, returning);
+}
+
 export function createTraveler(route: Point[]): Traveler | null {
   if (route.length < 2) return null;
   return { route, index: 1, x: route[0].x, y: route[0].y, wait: 0, done: false, direction: 0 };

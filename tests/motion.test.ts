@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createPreviewSnapshot } from "../app/data/preview.ts";
 import { createLayout, visitRoute } from "../app/office/layout.ts";
-import { activeDelta, advanceTraveler, createTraveler, frameDue, hash, nextVisitSeconds, workPose } from "../app/office/motion.ts";
+import { activeDelta, advanceTraveler, createTraveler, frameDue, hash, nextVisitSeconds, scheduledVisit, workPose } from "../app/office/motion.ts";
 
 test("main office keeps confirmed hierarchy and six project stations", () => {
   const snapshot = createPreviewSnapshot(new Date("2026-10-09T08:00:00Z"));
@@ -81,4 +81,18 @@ test("seeded work varies and visits keep long quiet intervals", () => {
   const poses = Array.from({ length: 40 }, (_, seconds) => workPose(seed, seconds));
   assert.ok(poses.some(pose => pose.typing));
   assert.ok(poses.some(pose => !pose.typing));
+});
+
+test("rebuilding after a completed visit retains the repeat deadline", () => {
+  const seed = hash("preview:vroom:1");
+  const initial = scheduledVisit(seed, 0);
+  const completedAt = initial + 300;
+  const repeat = scheduledVisit(seed, completedAt, null, true);
+  const rebuiltAt = completedAt + 60;
+  const rebuilt = scheduledVisit(seed, rebuiltAt, repeat);
+  assert.equal(rebuilt, repeat);
+  assert.ok(rebuilt > rebuiltAt);
+  assert.ok(rebuilt - completedAt >= 90 * 60);
+  assert.ok(rebuilt - completedAt <= 180 * 60);
+  assert.equal(scheduledVisit(seed, rebuiltAt) - rebuiltAt, nextVisitSeconds(seed));
 });

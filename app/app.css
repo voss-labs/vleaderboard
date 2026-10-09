@@ -48,14 +48,14 @@ svg { flex: 0 0 auto; }
 .icon-button:hover { background: #242e31; }
 .pixel-panel { border: 1px solid #566166; box-shadow: inset 0 0 0 3px #222b2f, inset 0 0 0 4px #333e42, 3px 3px 0 #050808; background: var(--panel); }
 .office-app { display: flex; height: 100dvh; min-height: 420px; flex-direction: column; background: var(--ink); }
-.app-header { height: 65px; min-height: 65px; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: #111719; border-bottom: 1px solid #435055; }
-.wordmark { display: inline-flex; align-items: center; gap: 7px; font-size: 23px; font-weight: 900; letter-spacing: 1px; line-height: 1; }
+.app-header { height: 65px; min-height: 65px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: #111719; border-bottom: 1px solid #435055; }
+.wordmark { display: inline-flex; align-items: center; gap: 7px; font-size: 22px; font-weight: 900; letter-spacing: 1px; line-height: 1; }
 .wordmark span { width: 11px; height: 11px; background: var(--orange); box-shadow: 2px 2px #943b1b; }
 .header-divider { height: 24px; border-left: 1px solid #384348; }
-.app-title { flex: 1; }
-.app-title h1 { font-size: 14px; font-weight: 650; letter-spacing: -.3px; }
+.app-title { flex: 1; min-width: 0; }
+.app-title h1 { font-size: 13px; font-weight: 650; letter-spacing: -.3px; white-space: nowrap; }
 .app-title > span { display: none; font-size: 10px; color: var(--muted); }
-.header-source { display: flex; align-items: center; gap: 2px; }
+.header-source { display: flex; flex-shrink: 0; align-items: center; gap: 2px; }
 .header-source select { min-height: 44px; background: transparent; border: 0; max-width: 102px; padding: 0 2px; font-size: 11px; outline-offset: 0; }
 .header-source option { background: var(--panel); }
 .status-light { width: 6px; height: 6px; display: inline-block; margin: 0 3px; background: #83ae89; box-shadow: 0 0 0 3px #83ae8915; }

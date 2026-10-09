@@ -3,7 +3,7 @@ import type { ActivityEvent, SceneProps, Selection } from "../data/types";
 import { loadArt, text, type Art } from "./art";
 import { Camera, type CameraState } from "./camera";
 import { createLayout, visitRoute, type Layout, type Point, type Seat } from "./layout";
-import { activeDelta, advanceTraveler, createTraveler, frameDue, hash, nextVisitSeconds, workPose, type Traveler } from "./motion";
+import { activeDelta, advanceTraveler, createTraveler, frameDue, hash, scheduledVisit, workPose, type Traveler } from "./motion";
 import { buildRooms, type RoomArt } from "./rooms";
 
 type Actor = { seat: Seat; sprite: Sprite; label: Container; seed: number; palette: number; nextVisit: number };
@@ -38,6 +38,7 @@ export async function createOfficeScene(host: HTMLElement, readProps: () => Scen
   let seconds = 0;
   let nextBubble = 18;
   let visit: { actor: Actor; traveler: Traveler } | null = null;
+  const visitDeadlines = new Map<string, number>();
   let raf = 0;
   let last: number | null = null;
   let destroyed = false;
@@ -81,6 +82,7 @@ export async function createOfficeScene(host: HTMLElement, readProps: () => Scen
   }
 
   function rebuild(): void {
+    if (visit) rescheduleVisit(visit.actor);
     const priorCamera = camera.state();
     const viewKey = props.view.kind === "office" ? "office" : props.view.repositoryId;
     const background = new Container();
@@ -112,7 +114,9 @@ export async function createOfficeScene(host: HTMLElement, readProps: () => Scen
       label.position.set(seat.x, seat.y + (fullName ? 55 : seat.roomId === "core" ? 70 : 35));
       overlay.addChild(label);
       const seed = hash(person.id);
-      return { seat, sprite, label, seed, palette, nextVisit: nextVisitSeconds(seed) };
+      const nextVisit = scheduledVisit(seed, seconds, visitDeadlines.get(person.id) ?? null);
+      visitDeadlines.set(person.id, nextVisit);
+      return { seat, sprite, label, seed, palette, nextVisit };
     });
     bubbles = [];
     queue = [];
@@ -156,6 +160,11 @@ export async function createOfficeScene(host: HTMLElement, readProps: () => Scen
     const event = previewEvent(actor, "visit", "Visiting the core team");
     addBubble(event);
     props.onPreviewEvent(event);
+  }
+
+  function rescheduleVisit(actor: Actor): void {
+    actor.nextVisit = scheduledVisit(actor.seed + Math.floor(seconds), seconds, null, true);
+    visitDeadlines.set(actor.seat.personId, actor.nextVisit);
   }
 
   function animateArt(): void {
@@ -215,7 +224,7 @@ export async function createOfficeScene(host: HTMLElement, readProps: () => Scen
         actor.sprite.position.set(actor.seat.x, actor.seat.y);
         actor.sprite.rotation = 0;
         actor.label.position.set(actor.seat.x, actor.seat.y + 35);
-        actor.nextVisit = seconds + nextVisitSeconds(actor.seed + Math.floor(seconds), true);
+        rescheduleVisit(actor);
         visit = null;
         props.onVisitActiveChange(false);
       }
@@ -270,6 +279,7 @@ export async function createOfficeScene(host: HTMLElement, readProps: () => Scen
     const key = JSON.stringify([props.view, focusedCommonsIds, props.snapshot.mainRepositoryIds, props.snapshot.people.map(p => [p.id, p.homeRoomId]), props.snapshot.repositories.map(r => [r.id, r.leadPersonId, r.memberPersonIds])]);
     if (key !== signature) { signature = key; rebuild(); }
     if (props.reducedMotion && !wasReduced && visit) {
+      rescheduleVisit(visit.actor);
       visit.actor.sprite.position.set(visit.actor.seat.x, visit.actor.seat.y);
       visit = null;
       props.onVisitActiveChange(false);

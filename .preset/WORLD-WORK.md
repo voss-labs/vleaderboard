@@ -14,7 +14,7 @@
 
 ## Tests
 
-- npm test: 20 tests passed, including seven motion/layout tests for hierarchy/capacity, corridor route constraints, slow travel/stop durations, hidden-time discard and seeded quiet intervals.
+- npm test: 22 tests passed, including eight motion/layout tests for hierarchy/capacity, corridor route constraints, slow travel/stop durations, hidden-time discard and seeded quiet intervals.
 - npm run typecheck: passed against current shared data and shell modules.
 - npm run build: passed both client and SSR production builds.
 - Local development initially retained a cached missing-module error while peers published files; restarted the existing 5173 listener. GET / now returns 200. Current sole dev server belongs to world agent, session40616.
@@ -32,8 +32,14 @@
 - Added the requested shared DevRel meeting/planning table beside the PPT screen, retaining both named leads, podium and planning board.
 - Added focused commons placement for selected/followed people beyond six visible seats; meaningful regression test verifies both focused people appear and the first four occupants retain identical seats.
 - Coordinated shell Tour availability and Follow view switching so off-floor people and unavailable tours do not leave inert controls.
-- Final targeted checks: all 20 tests and strict typecheck pass.
+- Final targeted checks: all 22 tests and strict typecheck pass.
 - Ambient scene simulation/rendering is capped at 30 frames per second, with a regression test for refresh-frame gating. Following reuses the camera render instead of rendering twice per frame.
 - Async cancellation checks now run after application initialization and atlas loading, before canvas attachment or listeners; canceled module imports skip scene construction entirely.
 
 - Final preview refinement: occasional ambient opened events now show "Simulated · Opened a pull request" above the attributed actor and remain in the feed as kind opened, source preview and URL null. Uses the existing bounded bubble/event flow; no factual GitHub claims or invented links.
+
+## Independent motion review correction
+
+- Retained per-person visit deadlines across room/snapshot/commons-placement scene rebuilds. Actor creation uses its stored deadline; newly introduced people schedule 45–120 minutes relative to current active simulation time.
+- Completed visits persist the 90–180 minute repeat deadline. Interrupted visits, including reduced-motion resets, receive the same long repeat cadence rather than restarting an expired visit immediately.
+- Added a regression reproducing a completed visit followed by a later actor rebuild and verifying the exact repeat deadline survives. All 22 combined tests and strict typecheck pass. Independent reviewer is rerunning the actual scene harness.
