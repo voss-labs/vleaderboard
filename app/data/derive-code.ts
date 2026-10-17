@@ -1,3 +1,4 @@
+import { isAgentAccount } from "./agents.ts";
 import { historyCoverage } from "./history-coverage.ts";
 import type { CodeCoverage, LeaderboardRow, OfficeSnapshot, Person } from "./types.ts";
 
@@ -38,6 +39,7 @@ export function addCodeMetrics(
       if (commit.isBot || seen.has(key)) continue;
       seen.add(key);
       const person = commit.authorPersonId ? people.get(commit.authorPersonId) : undefined;
+      if (isAgentAccount(person)) continue;
       if (snapshot.source.mode === "github" && person?.kind === "preview") continue;
       const row = person ? counts.get(person.id) ?? { ...emptyLeaderboardRow(person.id),
         commits: 0, additions: 0, deletions: 0, codeStatus: status } : null;
