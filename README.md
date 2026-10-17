@@ -33,7 +33,7 @@ npm run start
 
 ## Deploy to Cloudflare
 
-The repository prepares deployment; no remote Worker, namespace or secret is created by building or testing. The following setup commands create remote resources when you choose to deploy. Use your intended Cloudflare account and set the Worker name in `wrangler.jsonc` first.
+This checkout is configured for the existing VOSS production Worker and KV namespace. Update that deployment with `npm run deploy`; the existing GitHub secret is preserved. Building and testing create no remote resources. For a separate deployment, choose your own Worker name and Cloudflare account before creating its namespace and secret:
 
 ```sh
 cp .deploy.secrets.example .deploy.secrets
@@ -41,13 +41,21 @@ npx wrangler kv namespace create SNAPSHOTS --binding SNAPSHOTS --update-config -
 npm run deploy -- --secrets-file .deploy.secrets
 ```
 
-Before running the deploy command, fill only `GITHUB_TOKEN` in the ignored `.deploy.secrets` file. Required secrets must accompany the first deployment. The namespace command saves the real KV identifier to the source configuration before the build. The checked-in binding intentionally has no invented identifier; the pinned Wrangler also supports [automatic provisioning](https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning) for an omitted ID. `npm run deploy -- --secrets-file .deploy.secrets` builds and deploys the generated Worker and client assets with the required secret; npm forwards the flag to `wrangler deploy`. This explicitly selected file uploads its secret values. `.dev.vars` stays local and is not selected for deployment. Later deployments use `npm run deploy`, which preserves deployed secrets. Rotate the token through the interactive command below; it creates and deploys a new Worker version.
+Before the first deployment, fill only `GITHUB_TOKEN` in the ignored `.deploy.secrets` file. Required secrets must accompany that first deployment. The namespace command saves its identifier to the source configuration before the build; skip namespace creation when updating the existing VOSS deployment. `npm run deploy -- --secrets-file .deploy.secrets` builds and deploys the generated Worker and client assets with the required secret; npm forwards the flag to `wrangler deploy`. This explicitly selected file uploads its secret values. `.dev.vars` stays local and is not selected for deployment. Later deployments use `npm run deploy`, which preserves deployed secrets. Rotate the token through the interactive command below; it creates and deploys a new Worker version.
 
 ```sh
 npx wrangler secret put GITHUB_TOKEN
 ```
 
 The configured Cron Trigger runs at `*/15 * * * *` in UTC. Allow Cloudflare's trigger propagation and the first successful scheduled capture before expecting rows. There is no public capture endpoint. Missing credentials or an unsuccessful capture leaves the existing saved document intact. Logs report a capture outcome without credentials or raw upstream errors; Workers logs and sampled traces are enabled.
+
+To inspect scheduled captures:
+
+```sh
+npx wrangler tail vleaderboard --format json --search github-snapshot
+```
+
+Each invocation emits `github-snapshot-capture-start`, then a capture result. Success reports `published: true`, the timestamp, repository count, attempted requests and elapsed time. Failure reports `published: false` with a fixed stage/category and, when available, HTTP status or an allowlisted GraphQL code. A missing token has its own reason. These diagnostics stay out of the public snapshot. The test suite includes an actual workerd request-construction regression; Node fetch mocks alone cannot verify Workers runtime compatibility.
 
 ## Read the contributor API
 
