@@ -1,8 +1,8 @@
 import { CAPTURE_PAGE_SIZE } from "./capture-limits.ts";
 import { historyCoverage } from "./history-coverage.ts";
-import { deriveLeaderboard } from "./derive.ts";
+import { changedLines, deriveLeaderboard, rankLeaderboard } from "./derive.ts";
 import { validUser } from "./github-identity.ts";
-import type { LeaderboardRow, OfficeSnapshot, Period } from "./types.ts";
+import type { LeaderboardRow, OfficeSnapshot, Period, SortKey } from "./types.ts";
 
 function metrics(row: LeaderboardRow, pullsCaptured: boolean) {
   return {
@@ -12,17 +12,18 @@ function metrics(row: LeaderboardRow, pullsCaptured: boolean) {
     capturedCommits: row.commits,
     additions: row.additions,
     deletions: row.deletions,
+    linesChanged: changedLines(row),
     codeStatus: row.codeStatus,
   };
 }
 
-export function createContributorReport(snapshot: OfficeSnapshot, period: Period) {
+export function createContributorReport(snapshot: OfficeSnapshot, period: Period, sort: SortKey = "merged") {
   const capturedAt = snapshot.source.fetchedAt;
   const capturedTime = Date.parse(capturedAt ?? "");
   const hasCaptureTime = Number.isFinite(capturedTime);
   const now = new Date(hasCaptureTime ? capturedTime : 0);
-  const board = deriveLeaderboard(snapshot, period, now);
   const people = new Map(snapshot.people.map((person) => [person.id, person]));
+  const board = rankLeaderboard(deriveLeaderboard(snapshot, period, now), sort, people);
   const repositories = snapshot.repositories.map((repository) => {
     const work = snapshot.work.filter((entry) => entry.repositoryId === repository.id);
     const code = snapshot.code?.filter((entry) => entry.repositoryId === repository.id);
@@ -34,6 +35,7 @@ export function createContributorReport(snapshot: OfficeSnapshot, period: Period
     version: 1,
     source: snapshot.source,
     period,
+    sort,
     from: hasCaptureTime ? board.from : null,
     to: hasCaptureTime ? board.to : null,
     coverage: {

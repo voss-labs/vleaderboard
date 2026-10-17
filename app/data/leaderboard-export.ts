@@ -3,7 +3,8 @@ import {
   type ContributionCalendar, type ContributionStats,
 } from "./contributor-activity.ts";
 import { validUser } from "./github-identity.ts";
-import type { Leaderboard, LeaderboardRow, OfficeSnapshot, Person } from "./types.ts";
+import { changedLines } from "./derive.ts";
+import type { Leaderboard, LeaderboardRow, OfficeSnapshot, Person, SortKey } from "./types.ts";
 
 export type ExportContributor = {
   row: LeaderboardRow;
@@ -16,6 +17,7 @@ export type ExportContributor = {
 };
 export type LeaderboardExport = {
   periodLabel: string;
+  sort: SortKey;
   from: string | null;
   to: string;
   capturedAt: string | null;
@@ -35,11 +37,12 @@ export function hasChangedLines(row: LeaderboardRow): boolean {
   return row.additions !== 0 || row.deletions !== 0;
 }
 
-export function buildLeaderboardExport(snapshot: OfficeSnapshot, board: Leaderboard, rows: LeaderboardRow[], periodLabel: string, query = ""): LeaderboardExport {
+export function buildLeaderboardExport(snapshot: OfficeSnapshot, board: Leaderboard, rows: LeaderboardRow[], periodLabel: string, query = "", sort: SortKey = "merged"): LeaderboardExport {
   const people = new Map(snapshot.people.map((person) => [person.id, person]));
   const included = rows.filter(hasChangedLines);
   return {
     periodLabel,
+    sort,
     from: board.from,
     to: board.to,
     capturedAt: snapshot.source.fetchedAt,
@@ -65,6 +68,18 @@ const number = (value: number | null, prefix = "") => value === null ? "—" : `
 const date = (value: string | null) => value && Number.isFinite(Date.parse(value)) ? calendarDate(value) : "—";
 const exclusionNote = (data: LeaderboardExport) => data.excludedWithoutLines
   ? `${data.excludedWithoutLines} ${data.excludedWithoutLines === 1 ? "contributor" : "contributors"} with 0 changed lines excluded.` : "";
+const rankingPhrases: Record<SortKey, string> = { lines: "lines changed", merged: "merged PRs", commits: "captured commits" };
+const rankingNote = (data: LeaderboardExport) => `Ranked by ${rankingPhrases[data.sort]}, highest first; ties share a rank.`;
+const columns = (data: LeaderboardExport) => (["lines", "merged", "opened", "commits", "added", "removed"] as const).map((key) => ({ key,
+  label: { lines: "Lines changed", merged: "Merged PRs", opened: "PRs opened", commits: "Commits", added: "Lines added", removed: "Lines removed" }[key],
+  sorted: key === data.sort }));
+function cell(data: LeaderboardExport, row: LeaderboardRow, key: ReturnType<typeof columns>[number]["key"]): string {
+  if (key === "lines") return number(changedLines(row));
+  if (key === "merged") return number(data.pullsCaptured ? row.merged : null);
+  if (key === "opened") return number(data.pullsCaptured ? row.opened : null);
+  if (key === "commits") return number(row.commits);
+  return key === "added" ? number(row.additions, "+") : number(row.deletions, "−");
+}
 const windowLabel = (data: LeaderboardExport) => `${data.from ? date(data.from) : "Earliest available work"} to ${date(new Date(Date.parse(data.to) - 1).toISOString())}`;
 
 function markdownCell(value: string): string {
@@ -81,12 +96,14 @@ export function leaderboardMarkdown(data: LeaderboardExport): string {
     ...(data.excludedWithoutLines ? [`**Excluded:** ${exclusionNote(data)} Ranks are unchanged.  `] : []),
     ...(data.preview ? ["", "> Preview data. All counts are simulated."] : []),
     "",
-    "| Rank | Contributor | Merged PRs | PRs opened | Commits | Lines added | Lines removed |",
-    "| ---: | :--- | ---: | ---: | ---: | ---: | ---: |",
+    `**Ranking:** ${rankingNote(data)}`,
+    "",
+    `| Rank | Contributor | ${columns(data).map((column) => column.sorted ? `**${column.label}** ↓` : column.label).join(" | ")} |`,
+    `| ---: | :--- | ${columns(data).map(() => "---:").join(" | ")} |`,
     ...data.contributors.map(({ row, person, login, profileUrl }) => {
       const name = markdownCell(displayName(person));
       const who = profileUrl && login ? `[${name}](${profileUrl}) (@${markdownCell(login)})` : name;
-      return `| ${row.rank} | ${who} | ${number(data.pullsCaptured ? row.merged : null)} | ${number(data.pullsCaptured ? row.opened : null)} | ${number(row.commits)} | ${number(row.additions, "+")} | ${number(row.deletions, "−")} |`;
+      return `| ${row.rank} | ${who} | ${columns(data).map((column) => column.sorted ? `**${cell(data, row, column.key)}**` : cell(data, row, column.key)).join(" | ")} |`;
     }),
     "",
     "## Contribution activity",
@@ -100,7 +117,7 @@ export function leaderboardMarkdown(data: LeaderboardExport): string {
     "",
     "---",
     "",
-    "Ranked by merged pull requests; ties share a rank. A dash means the measurement is unavailable in the captured scope. Scope is the captured public VOSS Labs catalog and default-branch non-merge commits.",
+    `${rankingNote(data)} Lines changed is lines added plus lines removed. A dash means the measurement is unavailable in the captured scope. Scope is the captured public VOSS Labs catalog and default-branch non-merge commits.`,
     "",
   ];
   return lines.join("\n");
@@ -149,8 +166,9 @@ tbody { break-inside: avoid; page-break-inside: avoid; }
 td { text-align: right; vertical-align: middle; font: 500 13px "Geist Mono", monospace; color: #e0e0e0; }
 td.rank { width: 44px; text-align: left; color: #999; font-size: 12px; }
 td.who { text-align: left; font-family: "Geist", Arial, sans-serif; }
-td.merged { font-size: 20px; letter-spacing: -1px; }
-.leading td.rank, .leading td.merged { color: #fb7a3c; }
+td.score { font-size: 18px; letter-spacing: -1px; }
+th.sorted { color: #fb7a3c; }
+.leading td.rank, .leading td.score { color: #fb7a3c; }
 .identity { display: flex; align-items: center; gap: 10px; }
 .avatar { position: relative; display: inline-flex; flex: 0 0 30px; width: 30px; height: 30px; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #42403e; border-radius: 50%; background: #27221f; color: #edc9b6; font-size: 10px; font-weight: 600; }
 .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -183,13 +201,9 @@ export function leaderboardPrintDocument(data: LeaderboardExport): string {
     return `<tbody><tr class="summary${row.rank === 1 ? " leading" : ""}">
 <td class="rank">${row.rank.toString().padStart(2, "0")}</td>
 <td class="who"><div class="identity"><span class="avatar">${initials}${avatarUrl ? `<img src="${html(avatarUrl)}" alt="">` : ""}</span><div>${profileUrl ? `<a href="${html(profileUrl)}">${identity}</a>` : identity}</div></div></td>
-<td class="merged">${number(data.pullsCaptured ? row.merged : null)}</td>
-<td>${number(data.pullsCaptured ? row.opened : null)}</td>
-<td>${number(row.commits)}</td>
-<td class="added">${number(row.additions, "+")}</td>
-<td class="removed">${number(row.deletions, "−")}</td>
+${columns(data).map((column) => `<td class="${[column.sorted ? "score" : "", column.key === "added" ? "added" : column.key === "removed" ? "removed" : ""].filter(Boolean).join(" ")}">${cell(data, row, column.key)}</td>`).join("\n")}
 </tr>
-<tr class="activity"><td colspan="7"><div class="activity-cell">${calendarSvg(calendar)}<div class="facts"><span><b>${calendar.total.toLocaleString("en-US")}</b> contributions in 12 months</span><span><b>${stats.activeDays.toLocaleString("en-US")}</b> active days</span><span><b>${stats.longestStreak}</b>-day best streak</span><span>First <b>${html(date(stats.first))}</b></span><span>Latest <b>${html(date(stats.latest))}</b></span></div></div></td></tr></tbody>`;
+<tr class="activity"><td colspan="8"><div class="activity-cell">${calendarSvg(calendar)}<div class="facts"><span><b>${calendar.total.toLocaleString("en-US")}</b> contributions in 12 months</span><span><b>${stats.activeDays.toLocaleString("en-US")}</b> active days</span><span><b>${stats.longestStreak}</b>-day best streak</span><span>First <b>${html(date(stats.first))}</b></span><span>Latest <b>${html(date(stats.latest))}</b></span></div></div></td></tr></tbody>`;
   }).join("\n");
   const count = data.query ? `${data.contributors.length} of ${data.totalContributors}` : `${data.contributors.length}`;
   return `<!doctype html>
@@ -200,15 +214,15 @@ export function leaderboardPrintDocument(data: LeaderboardExport): string {
 <body>
 <header><span class="brand"><i></i>VOSS<small>Labs</small></span><span class="tag${data.preview ? " preview" : ""}">${data.preview ? "Preview · simulated counts" : "GitHub · captured history"}</span></header>
 <h1>Leaderboard<span>.</span></h1>
-<p class="lead">Contributions across VOSS Labs. Merged PRs, highest first. Ties share a rank.</p>
+<p class="lead">Contributions across VOSS Labs. ${html(rankingNote(data))}</p>
 <section class="meta">
 <div><strong>Period</strong>${html(data.periodLabel)} · ${html(windowLabel(data))} UTC</div>
 <div><strong>Snapshot captured</strong>${html(date(data.capturedAt))}</div>
 <div><strong>Contributors</strong>${count}${data.query ? ` matching “${html(data.query)}”` : ""} · ${data.repositoryCount} repositories${data.excludedWithoutLines ? `<br>${html(exclusionNote(data))}` : ""}</div>
 </section>
 <table>
-<thead><tr><th class="left">Rank</th><th class="left">Contributor</th><th>Merged PRs</th><th>Opened</th><th>Commits</th><th>Added</th><th>Removed</th></tr></thead>
-${rows || `<tbody><tr><td colspan="7" class="empty">No contributors in this export.</td></tr></tbody>`}
+<thead><tr><th class="left">Rank</th><th class="left">Contributor</th>${columns(data).map((column) => `<th${column.sorted ? ' class="sorted"' : ""}>${{ lines: "Lines", merged: "Merged PRs", opened: "Opened", commits: "Commits", added: "Added", removed: "Removed" }[column.key]}${column.sorted ? " ↓" : ""}</th>`).join("")}</tr></thead>
+${rows || `<tbody><tr><td colspan="8" class="empty">No contributors in this export.</td></tr></tbody>`}
 </table>
 <p class="legend">Less <i style="background:#1a1a1a"></i><i style="background:#4a2515"></i><i style="background:#8c3e1b"></i><i style="background:#cb5a27"></i><i style="background:#fb7a3c"></i> More</p>
 <footer>Calendar squares count authored commits and opened pull requests over the last 12 months. A dash means the measurement is unavailable in the captured scope. Scope is the captured public VOSS Labs catalog and default-branch non-merge commits.</footer>

@@ -3,7 +3,9 @@ import type {
   LeaderboardRow,
   OfficeSnapshot,
   Period,
+  Person,
   Repository,
+  SortKey,
 } from "./types.ts";
 import { historyCoverage } from "./history-coverage.ts";
 import { addCodeMetrics, emptyLeaderboardRow } from "./derive-code.ts";
@@ -75,4 +77,28 @@ export function deriveLeaderboard(
       : "Merged PRs · fetched repository coverage",
     codeCoverage,
   };
+}
+
+export const sortLabels: Record<SortKey, string> = { lines: "Lines changed", merged: "Merged PRs", commits: "Commits" };
+
+/** Lines changed is additions plus removals; unknown when either measurement is unavailable. */
+export function changedLines(row: LeaderboardRow): number | null {
+  return row.additions === null || row.deletions === null ? null : row.additions + row.deletions;
+}
+
+export function sortValue(row: LeaderboardRow, sort: SortKey): number | null {
+  return sort === "lines" ? changedLines(row) : sort === "commits" ? row.commits : row.merged;
+}
+
+/** Re-ranks by the chosen measurement, highest first. Unknown values sort last; equal values share a rank. */
+export function rankLeaderboard(board: Leaderboard, sort: SortKey, people: Map<string, Person>): Leaderboard {
+  if (sort === "merged") return board;
+  const value = (row: LeaderboardRow) => sortValue(row, sort) ?? -1;
+  const rows = board.rows.map((row) => ({ ...row })).sort((a, b) => value(b) - value(a) || b.merged - a.merged ||
+    (people.get(a.personId)?.name ?? a.personId).localeCompare(people.get(b.personId)?.name ?? b.personId, "en") ||
+    a.personId.localeCompare(b.personId, "en"));
+  rows.forEach((row, index) => {
+    row.rank = index > 0 && value(rows[index - 1]) === value(row) ? rows[index - 1].rank : index + 1;
+  });
+  return { ...board, rows };
 }
