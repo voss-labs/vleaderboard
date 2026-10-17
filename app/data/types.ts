@@ -1,5 +1,6 @@
 export type DataMode = "preview" | "github";
 export type Period = "month" | "30d" | "all";
+export type SortKey = "lines" | "merged" | "commits";
 export type TableId = "engineering" | "community" | "research";
 export type Selection = { kind: "person" | "repository"; id: string } | null;
 export type WorldView = { kind: "office" } | { kind: "repository"; repositoryId: string };

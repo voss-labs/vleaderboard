@@ -152,7 +152,7 @@ test("route validates methods and periods before reading storage or fetching ups
   let reads = 0;
   let upstream = 0;
   t.mock.method(globalThis, "fetch", async () => { upstream += 1; throw new Error("Unexpected upstream request."); });
-  for (const path of ["?period=year", "?period=", "?period=MONTH", "?period=all&period=month", "?mode=preview", "?mode=invalid"]) {
+  for (const path of ["?period=year", "?period=", "?period=MONTH", "?period=all&period=month", "?mode=preview", "?mode=invalid", "?sort=size", "?sort=lines&sort=merged"]) {
     const response = await loader(requestArgs(fixture(), path, "GET", () => { reads += 1; }));
     assert.equal(response.status, 400);
     assert.equal(response.headers.get("Cache-Control"), "no-store");
@@ -184,12 +184,16 @@ test("GET and HEAD read the injected cached snapshot without upstream work", asy
     const result = await loader(requestArgs(snapshot, `?period=${period}`, "GET", () => { reads += 1; }));
     assert.equal((await result.json() as ContributorReport).period, period);
   }
+  const byLines = await (await loader(requestArgs(snapshot, "?sort=lines", "GET", () => { reads += 1; }))).json() as ContributorReport & { sort: string };
+  assert.equal(byLines.sort, "lines");
+  assert.equal(report.contributors[0].linesChanged, report.contributors[0].additions === null || report.contributors[0].deletions === null
+    ? null : report.contributors[0].additions + report.contributors[0].deletions);
   const head = await loader(requestArgs(snapshot, "?period=all", "HEAD", () => { reads += 1; }));
   assert.equal(head.status, 200);
   assert.equal(head.headers.get("Cache-Control"), "no-store");
   assert.equal(head.headers.get("Content-Type"), response.headers.get("Content-Type"));
   assert.equal(await head.text(), "");
-  assert.equal(reads, 4);
+  assert.equal(reads, 5);
   assert.equal(upstream, 0);
 });
 
@@ -225,4 +229,20 @@ test("preview snapshots and reader failures never expose fixture reports or exce
   assert.equal(failed.status, 500);
   assert.equal(failed.headers.get("Cache-Control"), "no-store");
   assert.deepEqual(await failed.json(), { error: "Leaderboard could not be loaded." });
+});
+
+test("sorting by lines or commits re-ranks with shared ranks and unknown values last", async () => {
+  const { rankLeaderboard, deriveLeaderboard: derive } = await import("../app/data/derive.ts");
+  const board = derive(fixture(), "all", new Date("2026-10-09T08:00:00Z"));
+  const rows = [
+    { personId: "a", merged: 5, additions: 10, deletions: 0, commits: 2 },
+    { personId: "b", merged: 1, additions: 400, deletions: 100, commits: 2 },
+    { personId: "c", merged: 0, additions: null, deletions: null, commits: null },
+    { personId: "d", merged: 2, additions: 4, deletions: 6, commits: 9 },
+  ].map((row) => ({ ...row, rank: 0, opened: 0, reviews: null, codeStatus: "ready" as const }));
+  const people = new Map(["a", "b", "c", "d"].map((id) => [id, { id, name: id } as never]));
+  const ranked = (sort: "lines" | "commits") => rankLeaderboard({ ...board, rows }, sort, people).rows.map((row) => [row.personId, row.rank]);
+  assert.deepEqual(ranked("lines"), [["b", 1], ["a", 2], ["d", 2], ["c", 4]]);
+  assert.deepEqual(ranked("commits"), [["d", 1], ["a", 2], ["b", 2], ["c", 4]]);
+  assert.deepEqual(rows.map((row) => row.rank), [0, 0, 0, 0]);
 });

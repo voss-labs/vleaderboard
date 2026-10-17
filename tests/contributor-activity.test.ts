@@ -93,7 +93,8 @@ test("exports render escaped markdown and a dark print document with orange cale
   const data = buildLeaderboardExport(snapshot, board, board.rows, "All time");
   const markdown = leaderboardMarkdown(data);
   assert.match(markdown, /^# VOSS Labs Leaderboard/);
-  assert.match(markdown, /\| 1 \| \[Parth \\\| Dev\]\(https:\/\/github\.com\/fixture-parth\) \(@fixture-parth\) \| 1 \| 1 \| 4 \| \+12 \| −4 \|/);
+  assert.match(markdown, /\| 1 \| \[Parth \\\| Dev\]\(https:\/\/github\.com\/fixture-parth\) \(@fixture-parth\) \| 16 \| \*\*1\*\* \| 1 \| 4 \| \+12 \| −4 \|/);
+  assert.match(markdown, /\*\*Ranking:\*\* Ranked by merged PRs, highest first/);
   assert.match(markdown, /\| Parth \\\| Dev \| 4 \| 4 \| 3 days \| 2 Mar 2025 \| 16 Oct 2026 \|/);
 
   snapshot.people[0].name = "<script>alert(1)</script>";

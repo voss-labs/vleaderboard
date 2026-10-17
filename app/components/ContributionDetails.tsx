@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { CodeStatus, LeaderboardRow, Repository, RepositoryCode, RepositoryWork } from "../data/types";
 import type { ContributionHistory } from "../data/contribution-history";
 import { ContributionRecords } from "./ContributionRecords";
@@ -21,10 +22,13 @@ export function MetricValue({ value, label, prefix = "", partial = false }: { va
   return <span title={partial ? `${label}: captured subtotal` : label}>{prefix}{value.toLocaleString("en-US")}{partial && <span className="sr-only"> captured subtotal</span>}</span>;
 }
 
-export function ContributionMetrics({ row, pullsCaptured = true }: { row: LeaderboardRow; pullsCaptured?: boolean }) {
+/** `omit` names the measurement already shown elsewhere, such as the leaderboard's score column. */
+export function ContributionMetrics({ row, pullsCaptured = true, omit = "merged" }: { row: LeaderboardRow; pullsCaptured?: boolean; omit?: "merged" | "commits" | null }) {
   const partial = row.codeStatus !== "ready";
-  return <dl className="contribution-metrics">
-    <div><dt>Captured commits</dt><dd><MetricValue value={row.commits} label="Commits" partial={partial} /></dd></div>
+  const count = 4 + (omit === null ? 2 : 1);
+  return <dl className="contribution-metrics" style={{ "--metric-count": count } as CSSProperties}>
+    {omit !== "merged" && <div><dt>Merged PRs</dt><dd><MetricValue value={pullsCaptured ? row.merged : null} label="Merged PRs" /></dd></div>}
+    {omit !== "commits" && <div><dt>Captured commits</dt><dd><MetricValue value={row.commits} label="Commits" partial={partial} /></dd></div>}
     <div><dt>PRs opened</dt><dd><MetricValue value={pullsCaptured ? row.opened : null} label="PRs opened" /></dd></div>
     <div className="lines-added"><dt>Lines added</dt><dd><MetricValue value={row.additions} label="Lines added" prefix="+" partial={partial} /></dd></div>
     <div className="lines-removed"><dt>Lines removed</dt><dd><MetricValue value={row.deletions} label="Lines removed" prefix="−" partial={partial} /></dd></div>
