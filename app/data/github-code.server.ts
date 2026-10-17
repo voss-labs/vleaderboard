@@ -1,6 +1,6 @@
 import { CAPTURE_PAGE_SIZE } from "./capture-limits.ts";
 import { GithubFailure } from "./github-failure.server.ts";
-import { createPeopleRegistry, validUser } from "./github-identity.ts";
+import { createPeopleRegistry, validUser, type GithubUser } from "./github-identity.ts";
 import type { GraphqlRequest } from "./github-request.server.ts";
 import type { CodeCommit, Person, Repository, RepositoryCode } from "./types.ts";
 
@@ -19,6 +19,9 @@ const historyQuery = `query DefaultBranchHistory($name: String!, $cursor: String
               oid url messageHeadline committedDate additions deletions
               parents { totalCount }
               author { user { databaseId login } }
+              associatedPullRequests(first: 5) {
+                nodes { merged baseRepository { nameWithOwner } author { __typename ... on User { databaseId login } } }
+              }
             }
             pageInfo { hasNextPage endCursor }
           }
@@ -34,6 +37,23 @@ function record(value: unknown): Record<string, unknown> | null {
 
 function measured(value: unknown): number | null {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+/** GitHub cannot link a commit whose author email is unverified; the merged PR that landed it still has a linked author. */
+function mergedPullRequestAuthor(raw: Record<string, unknown>, repository: Repository): GithubUser | null {
+  const nodes = record(raw.associatedPullRequests)?.nodes;
+  if (!Array.isArray(nodes)) return null;
+  const authors = new Map<number, GithubUser>();
+  for (const node of nodes) {
+    const pull = record(node);
+    const base = record(pull?.baseRepository)?.nameWithOwner;
+    if (pull?.merged !== true || typeof base !== "string" || base.toLowerCase() !== repository.fullName.toLowerCase()) continue;
+    const author = record(pull.author);
+    const user = { id: author?.databaseId as number, login: author?.login as string };
+    if (author?.__typename !== "User" || !validUser(user)) return null;
+    authors.set(user.id, user);
+  }
+  return authors.size === 1 ? [...authors.values()][0] : null;
 }
 
 export function createCodeReader(request: GraphqlRequest, now: () => Date) {
@@ -79,7 +99,9 @@ export function createCodeReader(request: GraphqlRequest, now: () => Date) {
         seen.add(raw.oid);
         if (parentCount > 1) continue;
         const linked = record(record(raw.author)?.user);
-        const author = { id: linked?.databaseId as number, login: linked?.login as string };
+        const committer = { id: linked?.databaseId as number, login: linked?.login as string };
+        const pullAuthor = validUser(committer) ? null : mergedPullRequestAuthor(raw, repository);
+        const author = pullAuthor ?? committer;
         const additions = measured(raw.additions);
         const deletions = measured(raw.deletions);
         if (raw.additions != null && additions === null || raw.deletions != null && deletions === null) throw fail();
@@ -89,6 +111,7 @@ export function createCodeReader(request: GraphqlRequest, now: () => Date) {
           messageHeadline: raw.messageHeadline, authorPersonId: validUser(author) ? personId(author) : null,
           committedAt: raw.committedDate, additions, deletions,
           isBot: validUser(author) && author.login.endsWith("[bot]"),
+          ...(pullAuthor ? { attributedBy: "pull-request" as const } : {}),
         });
       }
       if (seen.size > total || pageInfo.hasNextPage && seen.size >= total) throw fail();

@@ -19,6 +19,7 @@ const identities: Record<string, { id: number; login: string }> = {
   "Harshal More": { id: 86048671, login: "harshalmore31" },
   "Mandar Patil": { id: 205825698, login: "Mandar885" },
   "Armash Ansari": { id: 172116296, login: "armash66" },
+  "Sujal Tiwari": { id: 225031209, login: "SujalTiwari1" },
 };
 
 export function createRoster(): Person[] {

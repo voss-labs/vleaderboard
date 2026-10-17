@@ -80,6 +80,8 @@ export type CodeCommit = {
   repositoryId: string;
   sha: string;
   messageHeadline?: string;
+  /** Present when the commit author is unlinked and the author of its merged PR supplies the identity. */
+  attributedBy?: "pull-request";
   url: string;
   authorPersonId: string | null;
   committedAt: string;

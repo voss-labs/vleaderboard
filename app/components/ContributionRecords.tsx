@@ -16,6 +16,7 @@ function CommitRecord({ commit }: { commit: HistoryCommit }) {
       {commit.href ? <a href={commit.href} target="_blank" rel="noreferrer" title={commit.sha} aria-label={`Commit ${commit.sha} on GitHub`}><code>{commit.sha.slice(0, 7)}</code><Icon name="arrow" size={12} /></a>
         : <code title={commit.sha} aria-label={`Commit ${commit.sha}`}>{commit.sha.slice(0, 7)}</code>}
       <span>Committed <RecordDate value={commit.committedAt} /></span>
+      {commit.attributedBy === "pull-request" && <span className="record-unavailable" title="The commit email is not linked to a GitHub account; the author of the merged pull request that landed it is credited.">Credited via merged PR</span>}
       <span className="commit-record-lines">
         <span className="lines-added" aria-label={commit.additions === null ? "Lines added unavailable" : `${commit.additions} lines added`}>{commit.additions === null ? "— added" : `+${commit.additions.toLocaleString("en-US")}`}</span>
         <span className="lines-removed" aria-label={commit.deletions === null ? "Lines removed unavailable" : `${commit.deletions} lines removed`}>{commit.deletions === null ? "— removed" : `−${commit.deletions.toLocaleString("en-US")}`}</span>

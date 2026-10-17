@@ -6,6 +6,7 @@ import { createSnapshotLoader } from "../app/data/load-snapshot.server.ts";
 import { createRoster } from "../app/data/roster.ts";
 import { deriveLeaderboard } from "../app/data/derive.ts";
 import type { GraphqlRequest } from "../app/data/github-request.server.ts";
+import { assertCompletePublicSnapshot } from "../app/data/snapshot-validation.server.ts";
 import { fakeGithub, fixtureToken, historyResponse, rawCommit, sha } from "./github-fixtures.ts";
 
 const roster = createRoster();
@@ -170,4 +171,33 @@ test("measured zero remains zero and history beyond ten records remains availabl
   assert.equal(snapshot.code?.[0].commits?.[0].deletions, 0);
   assert.equal(snapshot.code?.[0].captureComplete, true);
   assert.equal(snapshot.code?.[0].retryAt, null);
+});
+
+test("unlinked commits are credited to the single linked author of the merged PR that landed them", async () => {
+  const merged = (databaseId: number, login: string, base = "voss-labs/repo-0", isMerged = true) => ({
+    merged: isMerged, baseRepository: { nameWithOwner: base }, author: { __typename: "User", databaseId, login } });
+  const fake = fakeGithub();
+  fake.setCommits([
+    { ...rawCommit(1, null), associatedPullRequests: { nodes: [merged(225031209, "SujalTiwari1")] } },
+    { ...rawCommit(2, null), associatedPullRequests: { nodes: [merged(500, "other", "someone/fork"), merged(501, "closed", "voss-labs/repo-0", false)] } },
+    { ...rawCommit(3, null), associatedPullRequests: { nodes: [merged(500, "first"), merged(501, "second")] } },
+    { ...rawCommit(4), associatedPullRequests: { nodes: [merged(225031209, "SujalTiwari1")] } },
+  ]);
+  const snapshot = await createSnapshotLoader(fake)({ mode: "github" });
+  const commits = new Map(snapshot.code![0].commits!.map((entry) => [entry.sha, entry]));
+  assert.equal(commits.get(sha(1))?.authorPersonId, "named:sujal-tiwari");
+  assert.equal(commits.get(sha(1))?.attributedBy, "pull-request");
+  assert.equal(commits.get(sha(2))?.authorPersonId, null);
+  assert.equal(commits.get(sha(3))?.authorPersonId, null);
+  assert.equal(commits.get(sha(4))?.authorPersonId, "named:harshal-more");
+  assert.equal(commits.get(sha(4))?.attributedBy, undefined);
+  const board = deriveLeaderboard(snapshot, "month", fake.now());
+  assert.equal(board.rows.find((row) => row.personId === "named:sujal-tiwari")?.additions, 25);
+  assert.equal(board.codeCoverage.unattributedCommits, 2);
+  assert.doesNotThrow(() => assertCompletePublicSnapshot(snapshot));
+  const tampered = structuredClone(snapshot);
+  Object.assign(tampered.code![0].commits!.find((entry) => entry.sha === sha(1))!, { attributedBy: "email" });
+  assert.throws(() => assertCompletePublicSnapshot(tampered));
+  const body = JSON.parse(String(fake.requests.find((entry) => entry.method === "POST")!.body));
+  assert.match(body.query, /associatedPullRequests\(first: 5\)/);
 });
