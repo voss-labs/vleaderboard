@@ -105,3 +105,26 @@ test("exports render escaped markdown and a dark print document with orange cale
   assert.match(page, /class="l4"/);
   assert.equal(exportFileName("Last 30 days", board.to, "pdf"), "voss-leaderboard-last-30-days-2026-10-17.pdf");
 });
+
+test("exports leave out contributors whose measured changed lines total zero but keep unknown measurements", () => {
+  const snapshot = seeded();
+  snapshot.people.push({ ...snapshot.people[0], id: "github:2", name: "Zero Lines", github: { id: 2, login: "zero-lines", url: "https://github.com/zero-lines" } },
+    { ...snapshot.people[0], id: "github:3", name: "Unknown Lines", github: { id: 3, login: "unknown-lines", url: "https://github.com/unknown-lines" } });
+  snapshot.code![0].commits!.push({ ...commit(snapshot, 20, "2026-10-12T10:00:00Z"), authorPersonId: "github:2", additions: 0, deletions: 0 },
+    { ...commit(snapshot, 21, "2026-10-12T11:00:00Z"), authorPersonId: "github:3", additions: null, deletions: null });
+  snapshot.work[0].pulls!.push({ ...pull(snapshot, 8, "2026-10-11T08:00:00Z", "2026-10-12T08:00:00Z"), authorPersonId: "github:2" });
+  const board = deriveLeaderboard(snapshot, "all", captured);
+  assert.deepEqual(board.rows.map((row) => [row.personId, row.additions, row.deletions]),
+    [["github:149477150", 12, 4], ["github:2", 0, 0], ["github:3", null, null]]);
+  const data = buildLeaderboardExport(snapshot, board, board.rows, "All time");
+  assert.deepEqual(data.contributors.map((entry) => entry.person.id), ["github:149477150", "github:3"]);
+  assert.equal(data.excludedWithoutLines, 1);
+  assert.deepEqual(data.contributors.map((entry) => entry.row.rank), [1, 3]);
+  const markdown = leaderboardMarkdown(data);
+  assert.doesNotMatch(markdown, /Zero Lines/);
+  assert.match(markdown, /\*\*Excluded:\*\* 1 contributor with 0 changed lines excluded\. Ranks are unchanged\./);
+  assert.match(markdown, /Unknown Lines.*\| — \| — \|/);
+  const page = leaderboardPrintDocument(data);
+  assert.doesNotMatch(page, /Zero Lines/);
+  assert.match(page, /1 contributor with 0 changed lines excluded\./);
+});

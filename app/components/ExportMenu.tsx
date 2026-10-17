@@ -80,6 +80,7 @@ export function ExportMenu({ disabled, periodLabel, to, build }: Props) {
     {open && <div className="export-options" role="menu" aria-label="Export leaderboard">
       <button role="menuitem" onClick={exportMarkdown}><strong>Markdown</strong><span>.md table for READMEs and docs</span></button>
       <button role="menuitem" onClick={() => void exportPdf()}><strong>PDF</strong><span>Styled report with activity calendars</span></button>
+      <p className="export-note">Contributors with 0 changed lines are left out.</p>
     </div>}
     <span className="sr-only" role="status">{status}</span>
   </div>;
