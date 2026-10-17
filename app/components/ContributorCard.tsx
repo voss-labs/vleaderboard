@@ -37,7 +37,11 @@ function plural(count: number, word: string) {
 }
 
 function CalendarGrid({ calendar, selectedDay, onSelectDay }: { calendar: ContributionCalendar; selectedDay: string | null; onSelectDay: (day: string | null) => void }) {
-  return <div className="activity-calendar-scroll">
+  const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scroller.current) scroller.current.scrollLeft = scroller.current.scrollWidth;
+  }, [calendar]);
+  return <div className="activity-calendar-scroll" ref={scroller}>
     <div className="activity-calendar" style={{ "--calendar-weeks": calendar.weeks.length } as CSSProperties}>
       <div className="activity-calendar-months" aria-hidden="true">
         {calendar.months.map((month) => <span key={`${month.label}:${month.week}`} style={{ gridColumnStart: month.week + 1 }}>{month.label}</span>)}
