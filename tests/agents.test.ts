@@ -48,3 +48,9 @@ test("agent matching uses numeric IDs, so look-alike logins are kept", () => {
   assert.ok(!isAgentAccount(undefined));
   assert.equal(new Set(excludedAgentAccounts.map((entry) => entry.id)).size, excludedAgentAccounts.length);
 });
+
+test("GitHub automation accounts are excluded by suffix or ID", () => {
+  const base = createPreviewSnapshot(captured).people[0];
+  for (const [id, login] of [[41898282, "github-actions[bot]"], [49699333, "dependabot[bot]"], [73139402, "cloudflare-workers-and-pages[bot]"],
+    [108291165, "astrobot-houston"], [19864447, "web-flow"]] as const) assert.ok(isAgentAccount(account(id, login, base)), login);
+});

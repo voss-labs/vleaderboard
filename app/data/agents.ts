@@ -12,6 +12,7 @@ export const excludedAgentAccounts: { id: number; login: string; operator: strin
   { id: 198982749, login: "Copilot", operator: "GitHub Copilot" },
   { id: 203248971, login: "copilot-swe-agent", operator: "GitHub Copilot" },
   { id: 108291165, login: "astrobot-houston", operator: "Astro automation" },
+  { id: 19864447, login: "web-flow", operator: "GitHub web interface" },
 ];
 
 const excludedIds = new Set(excludedAgentAccounts.map((account) => account.id));
