@@ -6,6 +6,7 @@ import { InvalidSnapshotRequest, validateSnapshotRequest } from "./snapshot-requ
 import type { SnapshotReader } from "./snapshot-request.server.ts";
 import { assertPublicSnapshot } from "./snapshot-validation.server.ts";
 import type { OfficeSnapshot } from "./types.ts";
+import type { GithubDiagnostic } from "./github-failure.server.ts";
 
 export const SNAPSHOT_KEY = "public-office-snapshot:v1";
 export const SNAPSHOT_FRESHNESS_MS = 30 * 60 * 1000;
@@ -83,18 +84,35 @@ export function createStoredSnapshotReader(
 
 export async function refreshStoredSnapshot(env: SnapshotEnvironment, options: Omit<SnapshotLoaderOptions, "token" | "allowPreview"> = {}) {
   if (!env.GITHUB_TOKEN?.trim()) return { published: false, reason: "missing-token" } as const;
+  const started = (options.now?.() ?? new Date()).getTime();
+  let stage: "collect" | "validate" | "serialize" | "store" = "collect";
+  let requests = 0;
+  let repositories = 0;
+  let failure: GithubDiagnostic | undefined;
+  const diagnostics = () => ({ stage,
+    ...(failure ? failure : { category: stage === "store" ? "storage" : stage === "collect" ? "collection" : "validation" }),
+    requests, repositories, elapsedMs: Math.max(0, (options.now?.() ?? new Date()).getTime() - started) });
   try {
     const snapshot = await createSnapshotLoader({
       ...options, token: env.GITHUB_TOKEN, allowPreview: false,
       requestLimit: options.requestLimit ?? CAPTURE_REQUEST_LIMIT, deadlineMs: options.deadlineMs ?? CAPTURE_DEADLINE_MS,
+      onDiagnostic: (diagnostic) => {
+        requests = diagnostic.requests;
+        if (diagnostic.category && !failure) failure = diagnostic;
+        options.onDiagnostic?.(diagnostic);
+      },
     })({ mode: "github" });
+    repositories = snapshot.repositories.length;
+    stage = "validate";
     assertPublicSnapshot(snapshot);
+    stage = "serialize";
     const capturedAt = (options.now?.() ?? new Date()).toISOString();
     const json = serialize({ version: 1, capturedAt, snapshot });
     parseDocument(json, options.now?.() ?? new Date());
+    stage = "store";
     await env.SNAPSHOTS.put(SNAPSHOT_KEY, json);
-    return { published: true, reason: "captured", capturedAt, repositories: snapshot.repositories.length } as const;
+    return { published: true, reason: "captured", capturedAt, repositories, requests, elapsedMs: diagnostics().elapsedMs } as const;
   } catch {
-    return { published: false, reason: "incomplete-capture" } as const;
+    return { published: false, reason: "incomplete-capture", diagnostics: diagnostics() } as const;
   }
 }

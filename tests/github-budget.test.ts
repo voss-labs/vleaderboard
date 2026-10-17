@@ -92,10 +92,32 @@ test("redirect responses and malformed REST bodies fail without following or ret
     let count = 0;
     const fetcher: typeof fetch = async (_input, init) => {
       count += 1;
-      assert.equal(init?.redirect, "error");
+      assert.equal(init?.redirect, "manual");
       return status === 302 ? new Response(null, { status, headers: { location: "https://example.org" } }) : Response.json({ repositories: [] });
     };
     await assert.rejects(createGithubClient({ fetcher }).catalog(), GithubFailure);
     assert.equal(count, 1);
   }
+});
+
+test("diagnostics distinguish HTTP permission errors, declared rate limits and untrusted GraphQL codes", async () => {
+  for (const [status, headers, category] of [
+    [403, {}, "http"],
+    [403, { "retry-after": "60" }, "rate-limit"],
+    [403, { "x-ratelimit-remaining": "0" }, "rate-limit"],
+    [429, {}, "rate-limit"],
+  ] as const) {
+    const events: unknown[] = [];
+    const transport = createGithubTransport({ onDiagnostic: (event) => events.push(event),
+      fetcher: async () => new Response("Private runtime-secret body", { status, headers }) });
+    await assert.rejects(transport.request("/orgs/voss-labs/repos"), GithubFailure);
+    assert.deepEqual(events.at(-1), { endpoint: "catalog", requests: 1, category, httpStatus: status, graphqlCode: undefined });
+    assert.doesNotMatch(JSON.stringify(events), /Private|runtime-secret|body/);
+  }
+  const events: unknown[] = [];
+  const transport = createGithubTransport({ token: "runtime-secret", onDiagnostic: (event) => events.push(event),
+    fetcher: async () => Response.json({ errors: [{ type: "runtime-secret", extensions: { code: "Private" }, message: "Sensitive details" }] }) });
+  await assert.rejects(transport.graphql("Private query", {}), GithubFailure);
+  assert.deepEqual(events.at(-1), { endpoint: "graphql", requests: 1, category: "graphql", httpStatus: 200, graphqlCode: undefined });
+  assert.doesNotMatch(JSON.stringify(events), /Private|Sensitive|runtime-secret|query/);
 });

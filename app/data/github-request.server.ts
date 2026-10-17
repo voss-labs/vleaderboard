@@ -1,4 +1,5 @@
 import { GithubFailure, retryTime } from "./github-failure.server.ts";
+import type { GithubDiagnostic, GithubGraphqlCode } from "./github-failure.server.ts";
 
 export type GithubOptions = {
   fetcher?: typeof fetch;
@@ -7,6 +8,7 @@ export type GithubOptions = {
   requestLimit?: number;
   deadlineMs?: number;
   requestTimeoutMs?: number;
+  onDiagnostic?: (diagnostic: GithubDiagnostic) => void;
 };
 export type GithubRequest = <T>(path: string, shape?: "array" | "object") => Promise<{ data: T; next: boolean }>;
 export type GraphqlRequest = <T>(query: string, variables: Record<string, string>) => Promise<T>;
@@ -30,38 +32,46 @@ export function createGithubTransport(options: GithubOptions) {
 
   function deadlineRemaining() {
     const remaining = deadline - now().getTime();
-    if (remaining <= 0) throw new GithubFailure("GitHub capture deadline reached. The previous snapshot is retained.", new Date(now().getTime() + 900000).toISOString());
+    if (remaining <= 0) throw new GithubFailure("GitHub capture deadline reached. The previous snapshot is retained.", new Date(now().getTime() + 900000).toISOString(), "deadline");
     return remaining;
   }
 
   function limited(headers: Headers) {
     blockedUntil = retryTime(headers, now().getTime());
-    return new GithubFailure("GitHub limited this snapshot. Retry is scheduled.", new Date(blockedUntil).toISOString());
+    return new GithubFailure("GitHub limited this snapshot. Retry is scheduled.", new Date(blockedUntil).toISOString(), "rate-limit");
   }
 
   async function read(path: string, payload?: { query: string; variables: Record<string, string> }) {
     const clock = now().getTime();
-    const remaining = deadlineRemaining();
-    if (clock < blockedUntil) throw new GithubFailure("GitHub retry is scheduled.", new Date(blockedUntil).toISOString());
-    if (requests >= requestLimit) throw new GithubFailure("GitHub capture request allowance reached. The previous snapshot is retained.", new Date(clock + 900000).toISOString());
-    requests += 1;
-    const headers: Record<string, string> = {
-      Accept: "application/vnd.github+json", "User-Agent": "vleaderboard-public-snapshot",
-      "X-GitHub-Api-Version": "2026-03-10",
-    };
-    if (options.token) headers.Authorization = `Bearer ${options.token}`;
-    if (payload) headers["Content-Type"] = "application/json";
+    const endpoint = payload ? "graphql" : path.startsWith("/orgs/") ? "catalog" : "pulls";
+    let httpStatus: number | undefined;
+    let graphqlCode: GithubGraphqlCode | undefined;
+    let signal: AbortSignal | undefined;
     try {
+      const remaining = deadlineRemaining();
+      if (clock < blockedUntil) throw new GithubFailure("GitHub retry is scheduled.", new Date(blockedUntil).toISOString(), "rate-limit");
+      if (requests >= requestLimit) throw new GithubFailure("GitHub capture request allowance reached. The previous snapshot is retained.", new Date(clock + 900000).toISOString(), "request-limit");
+      requests += 1;
+      options.onDiagnostic?.({ endpoint, requests });
+      const headers: Record<string, string> = {
+        Accept: "application/vnd.github+json", "User-Agent": "vleaderboard-public-snapshot",
+        "X-GitHub-Api-Version": "2026-03-10",
+      };
+      if (options.token) headers.Authorization = `Bearer ${options.token}`;
+      if (payload) headers["Content-Type"] = "application/json";
+      signal = AbortSignal.timeout(Math.min(requestTimeoutMs, remaining));
       const response = await fetcher(`https://api.github.com${path}`, {
         method: payload ? "POST" : "GET", headers,
         body: payload ? JSON.stringify(payload) : undefined,
-        signal: AbortSignal.timeout(Math.min(requestTimeoutMs, remaining)), redirect: "error",
+        signal, redirect: "manual",
       });
+      httpStatus = response.status;
       deadlineRemaining();
       if (!response.ok) {
         await response.body?.cancel();
-        if (response.status === 403 || response.status === 429) throw limited(response.headers);
-        throw new Error("Public GitHub request failed");
+        if (response.status === 429 || response.status === 403 &&
+          (response.headers.has("retry-after") || response.headers.get("x-ratelimit-remaining") === "0")) throw limited(response.headers);
+        throw new GithubFailure("Public GitHub request failed.", new Date(clock + 30000).toISOString(), "http");
       }
       if (response.headers.get("x-ratelimit-remaining") === "0") blockedUntil = retryTime(response.headers, now().getTime());
       const data: unknown = await response.json();
@@ -69,14 +79,17 @@ export function createGithubTransport(options: GithubOptions) {
       if (payload && data && typeof data === "object" && "errors" in data) {
         const errors = (data as { errors: unknown }).errors;
         if (!Array.isArray(errors) || errors.length) {
+          const codes: GithubGraphqlCode[] = ["RATE_LIMITED", "FORBIDDEN", "NOT_FOUND", "UNAUTHORIZED", "INTERNAL"];
+          graphqlCode = Array.isArray(errors) ? errors.flatMap((error) => [error?.type, error?.extensions?.code]).find((code): code is GithubGraphqlCode => codes.includes(code)) : undefined;
           if (Array.isArray(errors) && errors.some((error) => error?.type === "RATE_LIMITED" || error?.extensions?.code === "RATE_LIMITED")) throw limited(response.headers);
-          throw new GithubFailure("GitHub returned GraphQL errors. The previous snapshot is retained.", new Date(clock + 30000).toISOString());
+          throw new GithubFailure("GitHub returned GraphQL errors. The previous snapshot is retained.", new Date(clock + 30000).toISOString(), "graphql");
         }
       }
       return { data, next: /rel="next"/.test(response.headers.get("link") ?? "") };
     } catch (error) {
-      if (error instanceof GithubFailure) throw error;
-      throw new GithubFailure("Public GitHub data is temporarily unavailable.", new Date(clock + 30000).toISOString());
+      const failure = error instanceof GithubFailure ? error : new GithubFailure("Public GitHub data is temporarily unavailable.", new Date(clock + 30000).toISOString(), signal?.aborted ? "timeout" : httpStatus === undefined ? "network" : "invalid-response");
+      options.onDiagnostic?.({ endpoint, requests, category: failure.category, httpStatus, graphqlCode });
+      throw failure;
     }
   }
 

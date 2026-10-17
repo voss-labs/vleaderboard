@@ -73,5 +73,5 @@ export function fakeGithub(repositoryCount = 1) {
 }
 
 function assertRequest(init: RequestInit | undefined) {
-  if (init?.redirect !== "error") throw new Error("Upstream redirects must be rejected");
+  if (init?.redirect !== "manual") throw new Error("Upstream redirects must be returned without following");
 }

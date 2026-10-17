@@ -1,9 +1,21 @@
+export type GithubFailureCategory = "network" | "timeout" | "deadline" | "request-limit" | "http" | "rate-limit" | "graphql" | "invalid-response" | "missing-token";
+export type GithubGraphqlCode = "RATE_LIMITED" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED" | "INTERNAL";
+export type GithubDiagnostic = {
+  endpoint: "catalog" | "pulls" | "graphql";
+  requests: number;
+  category?: GithubFailureCategory;
+  httpStatus?: number;
+  graphqlCode?: GithubGraphqlCode;
+};
+
 export class GithubFailure extends Error {
   retryAt: string;
-  constructor(message: string, retryAt: string) {
+  category: GithubFailureCategory;
+  constructor(message: string, retryAt: string, category: GithubFailureCategory = "invalid-response") {
     super(message);
     this.name = "GithubFailure";
     this.retryAt = retryAt;
+    this.category = category;
   }
 }
 

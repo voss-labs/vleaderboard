@@ -16,6 +16,7 @@ export default {
     return handleRequest(request, createSnapshotContext(reader, allowPreview));
   },
   async scheduled(_controller, env) {
+    console.log(JSON.stringify({ event: "github-snapshot-capture-start", scheduledTime: _controller.scheduledTime }));
     const result = await refreshStoredSnapshot(env);
     const log = JSON.stringify({ event: "github-snapshot-capture", ...result });
     if (result.published) console.log(log);

@@ -35,7 +35,7 @@ function source() {
       headers: failure === "catalog" ? { Link: '<https://api.github.com/next>; rel="next"' } : {},
     });
     if (String(input).endsWith("/graphql")) {
-      if (failure === "graphql") return Response.json({ errors: [{ message: "Permission denied" }] });
+      if (failure === "graphql") return Response.json({ errors: [{ type: "FORBIDDEN", message: "Sensitive upstream message runtime-secret" }] });
       return Response.json({ data: { repository: { defaultBranchRef: { target: { __typename: "Commit", history: {
         nodes: [{ oid: "a".repeat(40), url: `https://github.com/voss-labs/project/commit/${"a".repeat(40)}`,
           committedDate: "2026-10-16T10:00:00Z", additions: failure === "stats" ? null : 2, deletions: 0,
@@ -109,6 +109,46 @@ test("missing token and exhausted invocation budget never replace the previous d
   assert.equal(result.published, false);
   assert.equal(store.value, good);
   assert.equal(store.writes, 1);
+});
+
+test("capture diagnostics retain safe failure categories through the cache without upstream text or secrets", async () => {
+  const { store, github } = await captured();
+  const good = store.value;
+  for (const [failure, category, endpoint, httpStatus, graphqlCode] of [
+    ["network", "network", "catalog", undefined, undefined],
+    ["auth", "http", "catalog", 401, undefined],
+    ["graphql", "graphql", "graphql", 200, "FORBIDDEN"],
+    ["stats", "validation", undefined, undefined, undefined],
+  ] as const) {
+    github.fail(failure);
+    const result = await refreshStoredSnapshot({ SNAPSHOTS: store, GITHUB_TOKEN: "runtime-secret" }, github);
+    assert.equal(result.published, false);
+    if (result.published || !result.diagnostics) throw new Error("Expected diagnostics");
+    assert.equal(result.diagnostics.category, category);
+    assert.equal("endpoint" in result.diagnostics ? result.diagnostics.endpoint : undefined, endpoint);
+    assert.equal("httpStatus" in result.diagnostics ? result.diagnostics.httpStatus : undefined, httpStatus);
+    assert.equal("graphqlCode" in result.diagnostics ? result.diagnostics.graphqlCode : undefined, graphqlCode);
+    assert.equal(result.diagnostics.stage, "validate");
+    assert.equal(result.diagnostics.requests, failure === "network" || failure === "auth" ? 1 : 3);
+    assert.equal(store.value, good);
+    assert.doesNotMatch(JSON.stringify(result), /Sensitive|sensitive|runtime-secret|Permission|headers|Authorization|query/);
+  }
+});
+
+test("storage failure is distinct from upstream failure and preserves the exact previous document", async () => {
+  const { store, github } = await captured();
+  const good = store.value;
+  const result = await refreshStoredSnapshot({ GITHUB_TOKEN: "runtime-secret", SNAPSHOTS: {
+    get: store.get, async put() { throw new Error("Private KV details runtime-secret"); },
+  } }, github);
+  assert.equal(result.published, false);
+  if (result.published || !result.diagnostics) throw new Error("Expected diagnostics");
+  assert.equal(result.diagnostics.stage, "store");
+  assert.equal(result.diagnostics.category, "storage");
+  assert.equal(result.diagnostics.requests, 3);
+  assert.equal(result.diagnostics.repositories, 1);
+  assert.equal(store.value, good);
+  assert.doesNotMatch(JSON.stringify(result), /Private|runtime-secret/);
 });
 
 test("HTTP readers only read KV; age marks all repository coverage stale without losing data", async () => {
