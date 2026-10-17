@@ -4,6 +4,9 @@ import { deriveLeaderboard } from "../data/derive";
 import { contributionDate, selectContributionHistory } from "../data/contribution-history";
 import { historyCoverage } from "../data/history-coverage";
 import { ContributionDetails, ContributionMetrics, MetricValue, type RepositoryContribution } from "./ContributionDetails";
+import { ContributorAvatar, ContributorCard } from "./ContributorCard";
+import { ExportMenu } from "./ExportMenu";
+import { buildLeaderboardExport } from "../data/leaderboard-export";
 import { Icon, Timestamp } from "./ui";
 
 type Props = {
@@ -19,27 +22,20 @@ const periods: { value: Period; label: string }[] = [
   { value: "30d", label: "Last 30 days" },
 ];
 
-function ContributorAvatar({ person }: { person: Person }) {
-  const [failed, setFailed] = useState(false);
-  const initials = person.name.replace(/^Preview /, "").split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
-
-  return <span className="contributor-avatar" aria-hidden="true">
-    <span>{initials}</span>
-    {person.github && !failed && <img src={`https://avatars.githubusercontent.com/u/${person.github.id}?s=80&v=4`} alt="" width="36" height="36" loading="lazy" onError={() => setFailed(true)} />}
-  </span>;
-}
-
-function ContributorName({ person }: { person: Person }) {
-  const identity = <><strong>{person.name.replace(/^Preview /, "")}</strong><small>{person.kind === "preview" ? "Preview contributor" : person.github ? `@${person.github.login}` : "Contributor"}</small></>;
-
-  return <div className="contributor-identity">
+function ContributorName({ person, onOpen }: { person: Person; onOpen: () => void }) {
+  return <button className="contributor-identity" onClick={onOpen} aria-haspopup="dialog" aria-label={`Open contributor card for ${person.name.replace(/^Preview /, "")}`}>
     <ContributorAvatar person={person} />
-    {person.github ? <a className="contributor-profile" href={person.github.url} target="_blank" rel="noreferrer">{identity}<Icon name="arrow" size={13} /></a> : <span className="contributor-profile">{identity}</span>}
-  </div>;
+    <span className="contributor-profile">
+      <strong>{person.name.replace(/^Preview /, "")}</strong>
+      <small>{person.kind === "preview" ? "Preview contributor" : person.github ? `@${person.github.login}` : "Contributor"}</small>
+    </span>
+  </button>;
 }
 
 export function Leaderboard({ snapshot, board, period, onPeriod }: Props) {
   const [query, setQuery] = useState("");
+  const [cardPersonId, setCardPersonId] = useState<string | null>(null);
+  const periodLabel = periods.find((item) => item.value === period)?.label ?? "All time";
   const people = new Map(snapshot.people.map((person) => [person.id, person]));
   const covered = board.coveredRepositoryIds.map((id) => snapshot.repositories.find((repository) => repository.id === id)?.fullName ?? id);
   const codeCovered = board.codeCoverage.repositoryIds.map((id) => snapshot.repositories.find((repository) => repository.id === id)?.fullName ?? id);
@@ -51,6 +47,8 @@ export function Leaderboard({ snapshot, board, period, onPeriod }: Props) {
     const person = people.get(row.personId);
     return person && (!normalizedQuery || person.name.toLocaleLowerCase("en").includes(normalizedQuery) || person.github?.login.toLocaleLowerCase("en").includes(normalizedQuery));
   });
+  const cardRow = cardPersonId ? board.rows.find((row) => row.personId === cardPersonId) : undefined;
+  const cardPerson = cardPersonId ? people.get(cardPersonId) : undefined;
   const repositoryContributions = useMemo(() => {
     const contributions = new Map<string, RepositoryContribution[]>();
     for (const repository of snapshot.repositories) {
@@ -70,8 +68,12 @@ export function Leaderboard({ snapshot, board, period, onPeriod }: Props) {
   return <section className="contributor-board" id="contributor-leaderboard" tabIndex={-1} aria-labelledby="ranking-title">
     <div className="ranking-toolbar">
       <div><h2 id="ranking-title">Contributors</h2><p>Merged PRs, highest first. Ties share a rank.</p></div>
-      <div className="ranking-periods" role="group" aria-label="Leaderboard period">
-        {periods.map((item) => <button key={item.value} aria-pressed={period === item.value} onClick={() => onPeriod(item.value)}>{item.label}</button>)}
+      <div className="ranking-actions">
+        <div className="ranking-periods" role="group" aria-label="Leaderboard period">
+          {periods.map((item) => <button key={item.value} aria-pressed={period === item.value} onClick={() => onPeriod(item.value)}>{item.label}</button>)}
+        </div>
+        <ExportMenu disabled={!visibleRows.length} periodLabel={periodLabel} to={board.to}
+          build={() => buildLeaderboardExport(snapshot, board, visibleRows, periodLabel, query)} />
       </div>
     </div>
     <div className="ranking-window" aria-live="polite">
@@ -95,7 +97,7 @@ export function Leaderboard({ snapshot, board, period, onPeriod }: Props) {
           if (!person) return null;
           return <Fragment key={row.personId}><tr className={`contributor-summary${row.rank === 1 ? " is-leading" : ""}`}>
             <td className="contributor-rank"><span>{row.rank.toString().padStart(2, "0")}</span></td>
-            <th scope="row"><ContributorName person={person} /></th>
+            <th scope="row"><ContributorName person={person} onOpen={() => setCardPersonId(person.id)} /></th>
             <td className="contributor-score"><MetricValue value={pullsCaptured ? row.merged : null} label="Merged PRs" /></td>
           </tr><tr className="contributor-metrics-row"><td colSpan={3}>
             <div className="contributor-row-more">
@@ -112,6 +114,9 @@ export function Leaderboard({ snapshot, board, period, onPeriod }: Props) {
       <h3>{snapshot.source.status === "unavailable" ? "Work data unavailable" : "No captured contributions"}</h3>
       <p>{snapshot.source.status === "unavailable" ? "GitHub capture runs every 15 minutes. Refresh reads the latest saved snapshot." : "There are no captured contributions in this snapshot. GitHub capture runs every 15 minutes."}</p>
     </div>}
+
+    {cardRow && cardPerson && <ContributorCard key={`${cardPerson.id}:${period}:${board.to}`} snapshot={snapshot} person={cardPerson} row={cardRow}
+      contributionWindow={board} periodLabel={periodLabel} pullsCaptured={pullsCaptured} onClose={() => setCardPersonId(null)} />}
 
     <footer className="ranking-footer">
       <p>Ranks reflect the full captured scope. Search keeps original ranks.</p>

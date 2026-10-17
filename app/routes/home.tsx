@@ -7,6 +7,7 @@ import { Leaderboard } from "../components/Leaderboard";
 import { Icon, Timestamp } from "../components/ui";
 import { useOfficeSnapshot } from "../components/useOfficeSnapshot";
 import "../styles/leaderboard.css";
+import "../styles/contributor-card.css";
 
 export function meta() {
   return [
