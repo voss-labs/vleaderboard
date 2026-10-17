@@ -1,14 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DataMode, OfficeSnapshot } from "../data/types";
 
+function isSnapshot(value: unknown, mode: DataMode): value is OfficeSnapshot {
+  if (!value || typeof value !== "object" || !("version" in value) || value.version !== 1 ||
+    !("source" in value) || !value.source || typeof value.source !== "object" ||
+    !("mode" in value.source) || value.source.mode !== mode) return false;
+  return ["people", "repositories", "mainRepositoryIds", "work", "activity"].every(
+    (key) => key in value && Array.isArray(Reflect.get(value, key)),
+  ) && (!("code" in value) || Array.isArray(value.code));
+}
+
 async function readSnapshot(mode: DataMode, repositoryId: string | undefined, signal: AbortSignal): Promise<OfficeSnapshot> {
   const params = new URLSearchParams({ mode });
   if (repositoryId) params.set("repositoryId", repositoryId);
   const response = await fetch(`/api/snapshot?${params}`, { signal });
   if (!response.ok) throw new Error("The data could not be refreshed. Try again.");
   const result = await response.json();
-  if (result.version !== 1 || result.source?.mode !== mode) throw new Error("The server returned an unexpected snapshot.");
-  return result as OfficeSnapshot;
+  if (!isSnapshot(result, mode)) throw new Error("The server returned an unexpected snapshot.");
+  return result;
 }
 
 export function useOfficeSnapshot(initial: OfficeSnapshot) {

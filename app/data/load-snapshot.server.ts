@@ -6,22 +6,24 @@ import { createPreviewSnapshot } from "./preview.ts";
 import { createRoster } from "./roster.ts";
 import { createSnapshotCache } from "./snapshot-cache.server.ts";
 import type { CachedResult } from "./snapshot-cache.server.ts";
-import type { DataMode, OfficeSnapshot, RepositoryCode, RepositoryWork } from "./types.ts";
+import type { OfficeSnapshot, RepositoryCode, RepositoryWork } from "./types.ts";
+import { InvalidSnapshotRequest, validateSnapshotRequest } from "./snapshot-request.server.ts";
+import type { SnapshotRequest } from "./snapshot-request.server.ts";
+export { InvalidSnapshotRequest } from "./snapshot-request.server.ts";
 
-export class InvalidSnapshotRequest extends Error {}
+export type SnapshotLoaderOptions = GithubOptions & { allowPreview?: boolean };
 
-export function createSnapshotLoader(options: GithubOptions = {}) {
+export function createSnapshotLoader(options: SnapshotLoaderOptions = {}) {
   const now = options.now ?? (() => new Date());
+  const allowPreview = options.allowPreview === true;
   const client = createGithubClient(options);
   const cache = createSnapshotCache(now);
   const observed = new Map<string, CachedResult<WorkResult>>();
   const observedCode = new Map<string, CachedResult<CodeResult>>();
 
-  return async function load(options: { mode: DataMode; repositoryId?: string }): Promise<OfficeSnapshot> {
-    if (options.mode !== "preview" && options.mode !== "github") throw new InvalidSnapshotRequest("Invalid snapshot mode.");
-    if (options.repositoryId !== undefined && !/^github:[1-9]\d*$/.test(options.repositoryId)) throw new InvalidSnapshotRequest("Invalid repository ID.");
+  return async function load(options: SnapshotRequest): Promise<OfficeSnapshot> {
+    validateSnapshotRequest(options, allowPreview);
     if (options.mode === "preview") {
-      if (process.env.NODE_ENV === "production") throw new InvalidSnapshotRequest("Preview data is unavailable in production.");
       const preview = createPreviewSnapshot(now());
       if (options.repositoryId && !preview.repositories.some((repository) => repository.id === options.repositoryId)) {
         throw new InvalidSnapshotRequest("Repository is not in the public catalog.");
@@ -102,10 +104,4 @@ export function createSnapshotLoader(options: GithubOptions = {}) {
       activity: [...activity.values()].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, 100),
     };
   };
-}
-
-const defaultLoader = createSnapshotLoader({ token: process.env.GITHUB_TOKEN });
-
-export function loadSnapshot(options: { mode: DataMode; repositoryId?: string }): Promise<OfficeSnapshot> {
-  return defaultLoader(options);
 }

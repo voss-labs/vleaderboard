@@ -106,7 +106,7 @@ export function Leaderboard({ snapshot, board, period, onPeriod }: Props) {
     {board.rows.length > 0 && !visibleRows.length && <div className="leaderboard-empty"><h3>No contributors found</h3><p>No name or GitHub handle matches “{query.trim()}”.</p><button className="leaderboard-clear-search" onClick={() => setQuery("")}>Clear search</button></div>}
     {!board.rows.length && <div className="leaderboard-empty">
       <h3>{snapshot.source.status === "unavailable" ? "Work data unavailable" : "No captured contributions"}</h3>
-      <p>{snapshot.source.status === "unavailable" ? "Refresh the GitHub snapshot to try again." : "There are no captured contributions in this snapshot. Try refreshing the data."}</p>
+      <p>{snapshot.source.status === "unavailable" ? "GitHub capture runs every 15 minutes. Refresh reads the latest saved snapshot." : "There are no captured contributions in this snapshot. GitHub capture runs every 15 minutes."}</p>
     </div>}
 
     <footer className="ranking-footer">
@@ -116,7 +116,7 @@ export function Leaderboard({ snapshot, board, period, onPeriod }: Props) {
         <dl>
           <div><dt>Repository catalog</dt><dd>{snapshot.catalogComplete ? "All public repositories returned by the captured VOSS Labs catalog are included." : "Repository discovery is incomplete. The catalog captures at most three pages of 100 public repositories; repository coverage counts refer only to listed repositories."}</dd></div>
           <div><dt>Pull requests</dt><dd>{preview ? "Simulated preview. All counts are sample data." : "Partial fetched history. This is not a complete organization ranking. Up to 100 most recently updated pull requests per fetched repository; opened and merged use their respective event dates."}</dd></div>
-          <div><dt>Captured code</dt><dd>{preview ? "Simulated default-branch non-merge commits and changed lines." : `Captured default-branch non-merge commits, filtered by committed time. Latest 10 commit records per fetched repository. At most 10 commit detail reads per repository, with ${board.codeCoverage.detailReadLimit} new detail reads shared per server process per hour. Captured history is not a lifetime total.`}</dd></div>
+          <div><dt>Captured code</dt><dd>{preview ? "Simulated default-branch non-merge commits and changed lines." : `Captured default-branch non-merge commits, filtered by committed time. Latest 10 commit records per fetched repository. ${board.codeCoverage.detailReadLimit === null ? "Changed lines come from the same GitHub history capture." : `At most 10 commit detail reads per repository, with ${board.codeCoverage.detailReadLimit} new detail reads shared per capture.`} GitHub capture runs every 15 minutes; Refresh reads the latest saved snapshot. Captured history is not a lifetime total.`}</dd></div>
           <div><dt>Code coverage</dt><dd>{board.codeCoverage.message} {board.codeCoverage.capturedCommits} commits captured in this window; {board.codeCoverage.missingStats} missing line measurements; {board.codeCoverage.unattributedCommits} unattributed commits. Unavailable measurements show a dash.</dd></div>
           <div><dt>Code captured</dt><dd><Timestamp value={board.codeCoverage.fetchedAt} />{board.codeCoverage.retryAt && <>. Next attempt after <Timestamp value={board.codeCoverage.retryAt} /></>}</dd></div>
           <div><dt>From, inclusive</dt><dd>{board.from ? <time dateTime={board.from}>{utcDate(board.from)}</time> : "Earliest captured work"}</dd></div>

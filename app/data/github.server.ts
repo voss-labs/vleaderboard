@@ -1,9 +1,10 @@
 import type { ActivityEvent, Person, Repository, RepositoryWork, WorkItem } from "./types.ts";
 import { createPeopleRegistry, validUser } from "./github-identity.ts";
 import type { GithubUser } from "./github-identity.ts";
-import { GithubFailure, retryTime } from "./github-failure.server.ts";
-import { createCodeReader, processCodeDetailBudget } from "./github-code.server.ts";
-import type { CodeDetailBudget } from "./github-code.server.ts";
+import { GithubFailure } from "./github-failure.server.ts";
+import { createGithubTransport } from "./github-request.server.ts";
+import type { GithubOptions } from "./github-request.server.ts";
+import { createCodeReader } from "./github-code.server.ts";
 
 export type { GithubUser } from "./github-identity.ts";
 export { GithubFailure } from "./github-failure.server.ts";
@@ -18,8 +19,7 @@ type GithubWork = {
 };
 export type CatalogResult = { repositories: Repository[]; complete: boolean };
 export type WorkResult = { work: RepositoryWork; people: Person[]; activity: ActivityEvent[] };
-export type GithubOptions = { fetcher?: typeof fetch; now?: () => Date; token?: string; codeDetailBudget?: CodeDetailBudget };
-export type GithubRequest = <T>(path: string, shape?: "array" | "object") => Promise<{ data: T; next: boolean }>;
+export type { GithubOptions, GithubRequest } from "./github-request.server.ts";
 
 export function normalizeWork(
   repository: Repository, pulls: GithubWork[], issues: GithubWork[] | null, roster: Person[],
@@ -74,52 +74,8 @@ export function normalizeWork(
 }
 
 export function createGithubClient(options: GithubOptions = {}) {
-  const fetcher = options.fetcher ?? fetch;
   const now = options.now ?? (() => new Date());
-  let blockedUntil = 0;
-  let active = 0;
-  const waiting: (() => void)[] = [];
-
-  const request: GithubRequest = async <T>(path: string, shape: "array" | "object" = "array") => {
-    if (active >= 3) await new Promise<void>((resolve) => waiting.push(resolve));
-    else active += 1;
-    try { return await read<T>(path, shape); } finally {
-      const resume = waiting.shift();
-      if (resume) resume();
-      else active -= 1;
-    }
-  };
-
-  async function read<T>(path: string, shape: "array" | "object"): Promise<{ data: T; next: boolean }> {
-    const clock = now().getTime();
-    if (clock < blockedUntil) throw new GithubFailure("GitHub retry is scheduled.", new Date(blockedUntil).toISOString());
-    const headers: Record<string, string> = {
-      Accept: "application/vnd.github+json", "User-Agent": "vleaderboard-public-snapshot",
-      "X-GitHub-Api-Version": "2026-03-10",
-    };
-    if (options.token) headers.Authorization = `Bearer ${options.token}`;
-    try {
-      const response = await fetcher(`https://api.github.com${path}`, {
-        headers, signal: AbortSignal.timeout(8000), redirect: "error",
-      });
-      if (!response.ok) {
-        if (response.status === 403 || response.status === 429) {
-          blockedUntil = retryTime(response.headers, clock);
-          throw new GithubFailure("GitHub limited this public snapshot. Retry is scheduled.", new Date(blockedUntil).toISOString());
-        }
-        throw new Error("Public GitHub request failed");
-      }
-      if (response.headers.get("x-ratelimit-remaining") === "0") blockedUntil = retryTime(response.headers, clock);
-      const data: unknown = await response.json();
-      if (shape === "array" ? !Array.isArray(data) : !data || typeof data !== "object" || Array.isArray(data)) {
-        throw new Error("Invalid public GitHub response");
-      }
-      return { data: data as T, next: /rel="next"/.test(response.headers.get("link") ?? "") };
-    } catch (error) {
-      if (error instanceof GithubFailure) throw error;
-      throw new GithubFailure("Public GitHub data is temporarily unavailable.", new Date(clock + 30000).toISOString());
-    }
-  }
+  const { request, graphql } = createGithubTransport(options);
 
   async function catalog(): Promise<CatalogResult> {
     const repositories: Repository[] = [];
@@ -148,6 +104,5 @@ export function createGithubClient(options: GithubOptions = {}) {
     return normalizeWork(repository, pulls.data, null, roster, now().toISOString(), pulls.next);
   }
 
-  const budget = options.codeDetailBudget ?? processCodeDetailBudget(!!options.token);
-  return { catalog, work, code: createCodeReader(request, now, budget), codeDetailLimit: budget.limit };
+  return { catalog, work, code: createCodeReader(graphql, now), codeDetailLimit: null };
 }

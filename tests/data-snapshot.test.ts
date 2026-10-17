@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createSnapshotLoader, InvalidSnapshotRequest } from "../app/data/load-snapshot.server.ts";
+import type { OfficeSnapshot } from "../app/data/types.ts";
 import { deriveLeaderboard } from "../app/data/derive.ts";
 import { loader as apiLoader } from "../app/routes/api.snapshot.ts";
 import type { Route } from "../app/routes/+types/api.snapshot";
+import { createSnapshotContext } from "../app/snapshot-context.server.ts";
+import { fixtureToken, historyResponse } from "./github-fixtures.ts";
 
 const catalog = [{ id: 1332389317, name: "vroom", full_name: "voss-labs/vroom", private: false,
   owner: { login: "voss-labs" }, archived: false, fork: false, pushed_at: "2026-10-08T00:00:00Z" }];
@@ -28,12 +31,12 @@ function fakeGithub() {
     if (failure === "network") throw new Error("Network unavailable");
     if (failure === "rate") return new Response("", { status: 429, headers: { "retry-after": "600" } });
     const observedPull = { ...capturedPull, merged_at: mergedAt, updated_at: mergedAt };
-    const data = url.includes("/orgs/") ? catalog : url.includes("/commits?") ? [] : url.includes("/pulls?") ? [observedPull]
+    const data = url.includes("/orgs/") ? catalog : url.endsWith("/graphql") ? historyResponse([], false, "vroom") : url.includes("/pulls?") ? [observedPull]
       : [{ ...observedPull, number: 20, state: "open", merged_at: null }, { ...observedPull, pull_request: {} }];
     return Response.json(data, { headers: pagination ? { Link: '<https://api.github.com/ignored>; rel="next"' } : {} });
   };
   return {
-    fetcher, now: () => new Date(clock), urls,
+    fetcher, now: () => new Date(clock), urls, token: fixtureToken, deadlineMs: 86400000,
     get count() { return count; },
     advance(milliseconds: number) { clock += milliseconds; },
     fail(value: "rate" | "network" | null) { failure = value; },
@@ -44,7 +47,7 @@ function fakeGithub() {
 
 test("preview reaches no upstream and rejects invalid requests", async () => {
   const fake = fakeGithub();
-  const load = createSnapshotLoader(fake);
+  const load = createSnapshotLoader({ ...fake, allowPreview: true });
   assert.equal((await load({ mode: "preview" })).source.mode, "preview");
   assert.equal(fake.count, 0);
   await assert.rejects(load({ mode: "preview", repositoryId: "https://example.org" }), InvalidSnapshotRequest);
@@ -145,11 +148,12 @@ test("pagination is bounded and disclosed for catalog and work", async () => {
 });
 
 test("resource route returns no-store JSON and structured validation errors", async () => {
-  const args = (url: string) => ({ request: new Request(url) }) as Route.LoaderArgs;
+  const context = createSnapshotContext(createSnapshotLoader({ allowPreview: true }));
+  const args = (url: string): Route.LoaderArgs => ({ request: new Request(url), url: new URL(url), context, params: {}, pattern: "/api/snapshot" });
   const good = await apiLoader(args("http://localhost/api/snapshot?mode=preview"));
   assert.equal(good.status, 200);
   assert.equal(good.headers.get("cache-control"), "no-store");
-  assert.equal((await good.json()).source.mode, "preview");
+  assert.equal((await good.json<OfficeSnapshot>()).source.mode, "preview");
   const bad = await apiLoader(args("http://localhost/api/snapshot?mode=other"));
   assert.equal(bad.status, 400);
   assert.deepEqual(await bad.json(), { error: "Invalid snapshot mode." });

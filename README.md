@@ -1,17 +1,26 @@
 # VLeaderboard
 
-The VOSS Labs contributor board, built with React Router SSR, React and Tailwind CSS. It aggregates captured contributions across every public repository in the `voss-labs` catalog, ranks contributors by merged pull requests and shows commits, PRs opened, lines added/removed and repository breakdowns.
+One Cloudflare Worker serves the React Router website, static assets, `/api/snapshot` and `/api/leaderboard`. Its scheduled handler captures public `voss-labs` GitHub activity every 15 minutes into KV. Website and API requests read that saved snapshot; Refresh never starts a GitHub scan.
 
-## Run locally
+## Local development
 
 Use Node.js 24 or newer.
 
 ```sh
 npm ci
+cp .dev.vars.example .dev.vars
 npm run dev
 ```
 
-Open [localhost:5173](http://localhost:5173). The initial page uses genuine public GitHub data. Development also offers an explicitly labeled simulated Preview source for checking the interface. Production has no Preview control, rejects preview API requests and never falls back to fixture data.
+Open [localhost:5173](http://localhost:5173). Set `GITHUB_TOKEN` in the ignored `.dev.vars` file to enable authenticated GitHub capture. The token needs access to public GitHub GraphQL data; private repositories are excluded. Secrets enter through Worker bindings and never belong in `VITE_*`, Wrangler `vars` or browser code. `.env.example` documents the optional setting that disables Wrangler's fallback `.env` loading.
+
+The first page shows an honest unavailable state until a successful local capture. With the development server running, invoke its local scheduler:
+
+```sh
+curl 'http://localhost:5173/cdn-cgi/local/scheduled?format=json'
+```
+
+Refresh the page after capture. Local KV persists under `.wrangler/state/v3`. Set `ALLOW_PREVIEW=true` in `.dev.vars` and restart development to explicitly enable labeled fixture previews. Production builds always reject preview requests; fixture data is never written to KV.
 
 ```sh
 npm test
@@ -20,31 +29,54 @@ npm run build
 npm run start
 ```
 
-The production server serves `build/server/index.js`. CI runs the tests, TypeScript check and production build on Node 24.
+`start` runs the built Worker locally with Wrangler, normally on port 8787. `npm run preview` runs Vite's production preview. `npm run deploy:dry-run` builds and packages locally without deploying. Type checking regenerates `worker-configuration.d.ts` from the Wrangler configuration.
 
-## Use the board
+## Deploy to Cloudflare
 
-Choose This month, Last 30 days or Captured history. Search by contributor name or GitHub handle; filtering preserves ranks from the full captured scope. Open a contributor's Details for repository contributions and source coverage. Profile and repository links lead to genuine GitHub records. Small avatars use confirmed GitHub identities, with initials when an image or identity is unavailable.
+The repository prepares deployment; no remote Worker, namespace or secret is created by building or testing. The following setup commands create remote resources when you choose to deploy. Use your intended Cloudflare account and set the Worker name in `wrangler.jsonc` first.
 
-The board shows PR and code repository coverage separately. A dash means unavailable, while a measured zero remains zero. Lines added and removed describe changed text in captured commits, including documentation and other files; they are not repository size or code ownership. The office scene remains dormant in the source and is not mounted by the board.
+```sh
+cp .deploy.secrets.example .deploy.secrets
+npx wrangler kv namespace create SNAPSHOTS --binding SNAPSHOTS --update-config --config wrangler.jsonc
+npm run deploy -- --secrets-file .deploy.secrets
+```
 
-## GitHub data and environment
+Before running the deploy command, fill only `GITHUB_TOKEN` in the ignored `.deploy.secrets` file. Required secrets must accompany the first deployment. The namespace command saves the real KV identifier to the source configuration before the build. The checked-in binding intentionally has no invented identifier; the pinned Wrangler also supports [automatic provisioning](https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning) for an omitted ID. `npm run deploy -- --secrets-file .deploy.secrets` builds and deploys the generated Worker and client assets with the required secret; npm forwards the flag to `wrangler deploy`. This explicitly selected file uploads its secret values. `.dev.vars` stays local and is not selected for deployment. Later deployments use `npm run deploy`, which preserves deployed secrets. Rotate the token through the interactive command below; it creates and deploys a new Worker version.
 
-Public reads work without credentials. An optional `GITHUB_TOKEN` in the server process environment increases the GitHub request budget and the application's commit-detail allowance. Supply it through the runtime environment; `.env.example` names the variable. Credentials remain server-only and never enter snapshot JSON.
+```sh
+npx wrangler secret put GITHUB_TOKEN
+```
 
-`GET /api/snapshot` defaults to genuine GitHub data. `mode=github` is explicit; `mode=preview` is development-only. The optional `repositoryId=github:<repository-id>` validates a public catalog identity, while genuine snapshots still aggregate every catalog repository. Invalid modes/IDs and production preview requests return HTTP 400 JSON. Upstream failures return explicit unavailable/stale domain state, preserve cached data when available and use `Cache-Control: no-store`.
+The configured Cron Trigger runs at `*/15 * * * *` in UTC. Allow Cloudflare's trigger propagation and the first successful scheduled capture before expecting rows. There is no public capture endpoint. Missing credentials or an unsuccessful capture leaves the existing saved document intact. Logs report a capture outcome without credentials or raw upstream errors; Workers logs and sampled traces are enabled.
 
-The catalog follows at most three pages of 100 public repositories and caches for ten minutes. Every catalog repository receives bounded PR and commit capture, with three repository workers and at most three active upstream requests. PR snapshots cache for five minutes; each captures up to 100 most recently updated PRs. Issues are not fetched by this board. Commit snapshots cache for fifteen minutes; each lists the latest ten default-branch commit records and excludes merge commits. Changed-line measurements come from immutable per-SHA details, cached separately. New SHA-detail reads share a per-process hourly allowance of 20 without a token or 600 with a token. All allowances remain subject to GitHub's rate limits.
+## Read the contributor API
 
-Counts use UTC calendar-month, exact rolling-30-day or captured-history windows with an exclusive upper bound. PRs use their opened/merged dates; commits use committed time. Bots, duplicate records and unlinked authors are handled explicitly. Equal merged counts share competition ranks. Captured history is not a lifetime total, and bounded history may cover only part of a selected period. Missing line details stay unknown rather than becoming zero.
+```sh
+curl 'http://localhost:8787/api/leaderboard?period=month'
+curl 'http://localhost:8787/api/leaderboard?period=30d'
+curl 'http://localhost:8787/api/leaderboard?period=all'
+curl 'http://localhost:8787/api/snapshot?mode=github'
+```
 
-Requests have timeouts, concurrency limits and shared in-flight reads. Rate-limit retries honor upstream headers, cached successful data survives refresh failures and source timestamps expose age. Caches and capture budgets are process-local and reset on restart. No webhook, private repository or live-presence integration is included.
+`GET` and `HEAD` are supported with `Cache-Control: no-store`; unsupported methods return 405. `/api/leaderboard` defaults to `month` and returns ranked contributor identities, merged/opened PRs, captured commits, changed lines and per-repository breakdowns, plus source timestamps, coverage and capture limits. `30d` is an exact rolling window; `all` means captured history. Unknown measurements stay `null`. Equal merged counts share competition ranks. Periods anchor to the saved capture time.
 
-## Build container
+`/api/snapshot` returns the underlying `OfficeSnapshot`. Optional `repositoryId=github:<numeric-id>` must belong to its public catalog; it validates identity while retaining aggregation across every catalog repository. Invalid modes, malformed IDs, unknown catalog IDs and production preview requests return HTTP 400 JSON. Before priming, both APIs return HTTP 200 with explicit unavailable source/coverage and unknown data so the UI can render. A missing or malformed KV document never triggers a GitHub request or fixture fallback.
+
+## Capture contract
+
+The collector follows up to three catalog pages of 100 public repositories. Every catalog repository, including archives and forks, receives up to 100 recently updated PRs and the latest ten default-branch commit records. GraphQL returns linked numeric GitHub identities and changed-line counts in one history request per repository; merge commits are excluded. Authors without linked GitHub accounts remain unattributed. Emails and private data are not requested. The board ranks merged PRs and exposes separate PR/code coverage. Changed lines measure captured text changes, including documentation; they are not repository size or code ownership. Captured history is not a lifetime total.
+
+Each scheduled invocation creates a fresh collector using its runtime token. REST and GraphQL share at most three active requests, a maximum of 44 external requests, an eight-second request timeout and a 45-second overall deadline. A 16-repository capture normally uses 33 external calls: one catalog, 16 PR lists and 16 history queries. With one catalog page, 21 repositories fit this request allowance; larger catalogs need a revised ingestion plan or allowance/platform review. Redirects and automatic retries are disabled. These bounds do not establish capacity for arbitrary organizations.
+
+KV stores a versioned public envelope at `public-office-snapshot:v1` with `capturedAt` and `snapshot`. Schema, public source, identities, repository relationships and repository coverage are validated before publishing. Bounded PR/commit history is valid partial coverage; failed/missing repository reads, malformed measurements, authentication failures, budget exhaustion and deadline failures preserve the whole previous successful document. Snapshots have no short expiration. After 30 minutes, twice the capture cadence, readers mark the saved source and repository coverage stale while retaining its data. [KV is eventually consistent](https://developers.cloudflare.com/kv/concepts/how-kv-works/), so a new capture may take 60 seconds or longer to appear elsewhere.
+
+The UI supports month/rolling/captured periods, contributor search and contribution details. A dash means unknown; a measured zero remains zero. The earlier office scene remains in the source and is dormant.
+
+## Container for local Worker preview
 
 ```sh
 docker build -t vleaderboard .
-docker run --rm -p 3000:3000 vleaderboard
+docker run --rm -p 8787:8787 -v vleaderboard-kv:/app/.wrangler/state vleaderboard
 ```
 
-The Dockerfile uses Node 24 and the SSR server. Environment files, Git history, process artifacts and local credentials are excluded from its build context. A public hosting destination is not configured.
+This runs Wrangler's local Worker emulator on Node 24. Git history, process artifacts, environment files and local secrets are excluded from the image. To enable local scheduled capture, mount a prepared `.dev.vars` file read-only at `/app/.dev.vars`. The container is a development/preview runtime; production runs on Cloudflare Workers.

@@ -10,3 +10,8 @@ node_modules
 tests
 *.log
 .DS_Store
+
+.wrangler
+.dev.vars*
+
+.deploy.secrets*

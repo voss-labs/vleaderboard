@@ -132,7 +132,7 @@ export function createPreviewSnapshot(now: Date): OfficeSnapshot {
       };
     }));
     return { repositoryId: repository.id, status: "ready" as const, fetchedAt: now.toISOString(),
-      commits, captureComplete: true, message: "Simulated default-branch non-merge commits and changed lines.", retryAt: null, detailReadLimit: 20 };
+      commits, captureComplete: true, message: "Simulated default-branch non-merge commits and changed lines.", retryAt: null, detailReadLimit: null };
   });
   return {
     version: 1,

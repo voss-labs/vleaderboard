@@ -1,139 +1,96 @@
 import { GithubFailure } from "./github-failure.server.ts";
 import { createPeopleRegistry, validUser } from "./github-identity.ts";
-import type { GithubUser } from "./github-identity.ts";
-import type { GithubRequest } from "./github.server.ts";
+import type { GraphqlRequest } from "./github-request.server.ts";
 import type { CodeCommit, Person, Repository, RepositoryCode } from "./types.ts";
 
-type RawCommit = {
-  sha: string;
-  author?: GithubUser | null;
-  parents: { sha: string }[];
-  commit: { committer: { date: string } };
-};
-type Detail = { sha: string; stats: { additions: number; deletions: number } };
-type Stats = Pick<CodeCommit, "additions" | "deletions">;
-type DetailEntry = { value: Stats | null; retryAt: number; message: string; pending?: Promise<DetailEntry> };
 export type CodeResult = { code: RepositoryCode; people: Person[] };
-export type CodeDetailBudget = { limit: number; take: (clock: number) => number | null };
 
-export function createCodeDetailBudget(authenticated = false): CodeDetailBudget {
-  let reads: number[] = [];
-  const limit = authenticated ? 600 : 20;
-  return {
-    limit,
-    take(clock) {
-      reads = reads.filter((time) => time > clock - 3600000);
-      if (reads.length >= limit) return reads[0] + 3600000;
-      reads.push(clock);
-      return null;
-    },
-  };
-}
-
-const processBudget = createCodeDetailBudget();
-const authenticatedProcessBudget = createCodeDetailBudget(true);
-
-export function processCodeDetailBudget(authenticated: boolean): CodeDetailBudget {
-  return authenticated ? authenticatedProcessBudget : processBudget;
-}
-
-function validCommit(raw: RawCommit): boolean {
-  return !!raw && typeof raw.sha === "string" && /^[a-f0-9]{40}$/i.test(raw.sha) &&
-    Array.isArray(raw.parents) && raw.parents.every((parent) => !!parent && typeof parent.sha === "string") &&
-    Number.isFinite(Date.parse(raw.commit?.committer?.date));
-}
-
-export function createCodeReader(
-  request: GithubRequest, now: () => Date, budget: CodeDetailBudget = processBudget,
-) {
-  const details = new Map<string, DetailEntry>();
-
-  function trimDetails() {
-    while (details.size > 1000) {
-      const oldest = [...details.keys()].find((id) => !details.get(id)?.pending);
-      if (!oldest) return;
-      details.delete(oldest);
+const historyQuery = `query DefaultBranchHistory($name: String!) {
+  repository(owner: "voss-labs", name: $name) {
+    defaultBranchRef {
+      target {
+        __typename
+        ... on Commit {
+          history(first: 10) {
+            nodes {
+              oid url committedDate additions deletions
+              parents { totalCount }
+              author { user { databaseId login } }
+            }
+            pageInfo { hasNextPage endCursor }
+          }
+        }
+      }
     }
   }
+}`;
 
-  async function detail(repository: Repository, sha: string): Promise<DetailEntry> {
-    const key = `${repository.id}:${sha}`;
-    const cached = details.get(key);
-    if (cached?.pending) return cached.pending;
-    if (cached && (cached.value || cached.retryAt > now().getTime())) {
-      details.delete(key);
-      details.set(key, cached);
-      return cached;
-    }
-    const entry: DetailEntry = { value: null, retryAt: 0, message: "" };
-    const pending = (async () => {
-      const retryAt = budget.take(now().getTime());
-      if (retryAt !== null) {
-        entry.retryAt = retryAt;
-        entry.message = `SHA detail capture reached its ${budget.limit} new reads per hour limit.`;
-        return entry;
-      }
-      try {
-        const result = await request<Detail>(`/repos/voss-labs/${encodeURIComponent(repository.name)}/commits/${sha}`, "object");
-        const stats = result.data.stats;
-        if (result.data.sha?.toLowerCase() !== sha || !stats ||
-          !Number.isSafeInteger(stats.additions) || stats.additions < 0 ||
-          !Number.isSafeInteger(stats.deletions) || stats.deletions < 0) throw new Error("Invalid SHA detail stats");
-        entry.value = { additions: stats.additions, deletions: stats.deletions };
-      } catch (error) {
-        entry.retryAt = error instanceof GithubFailure ? Date.parse(error.retryAt) : now().getTime() + 30000;
-        entry.message = error instanceof GithubFailure ? error.message : "Changed-line details are temporarily unavailable.";
-      }
-      return entry;
-    })();
-    entry.pending = pending;
-    details.set(key, entry);
-    trimDetails();
-    try { return await pending; } finally {
-      delete entry.pending;
-      trimDetails();
-    }
-  }
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
 
+function measured(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+export function createCodeReader(request: GraphqlRequest, now: () => Date) {
   return async function code(repository: Repository, roster: Person[]): Promise<CodeResult> {
-    const listed = await request<RawCommit[]>(`/repos/voss-labs/${encodeURIComponent(repository.name)}/commits?per_page=10`);
+    const response = await request<unknown>(historyQuery, { name: repository.name });
+    const rawRepository = record(record(response)?.repository);
+    const fail = () => new GithubFailure("Invalid GitHub default-branch history.", new Date(now().getTime() + 30000).toISOString());
+    if (!rawRepository) throw fail();
     const { people, personId } = createPeopleRegistry(roster);
-    const unique = new Map<string, RawCommit>();
-    let invalid = listed.data.length > 10;
-    for (const raw of listed.data.slice(0, 10)) {
-      if (!validCommit(raw)) { invalid = true; continue; }
-      if (raw.parents.length > 1) continue;
-      unique.set(raw.sha.toLowerCase(), raw);
+    const branch = rawRepository.defaultBranchRef;
+    let nodes: unknown[] = [];
+    let hasNextPage = false;
+    if (branch !== null) {
+      const target = record(record(branch)?.target);
+      const history = record(target?.history);
+      const pageInfo = record(history?.pageInfo);
+      if (target?.__typename !== "Commit" || !history || !Array.isArray(history.nodes) ||
+        typeof pageInfo?.hasNextPage !== "boolean" ||
+        (pageInfo.endCursor !== null && typeof pageInfo.endCursor !== "string") ||
+        (pageInfo.hasNextPage && !pageInfo.endCursor)) throw fail();
+      nodes = history.nodes;
+      hasNextPage = pageInfo.hasNextPage;
     }
-    const commits: CodeCommit[] = [];
-    const failures: DetailEntry[] = [];
-    const entries = [...unique.entries()];
-    let next = 0;
-    await Promise.all(Array.from({ length: Math.min(3, entries.length) }, async () => {
-      while (next < entries.length) {
-        const [sha, raw] = entries[next++];
-        const captured = await detail(repository, sha);
-        if (!captured.value) failures.push(captured);
-        commits.push({
-          id: `${repository.id}:commit:${sha}`, repositoryId: repository.id, sha,
-          url: `${repository.url}/commit/${sha}`, authorPersonId: validUser(raw.author) ? personId(raw.author) : null,
-          committedAt: raw.commit.committer.date,
-          additions: captured.value?.additions ?? null, deletions: captured.value?.deletions ?? null,
-          isBot: validUser(raw.author) && (raw.author.type === "Bot" || raw.author.login.endsWith("[bot]")),
-        });
+    const commits = new Map<string, CodeCommit>();
+    let invalid = nodes.length > 10;
+    let missingStats = 0;
+    for (const node of nodes.slice(0, 10)) {
+      const raw = record(node);
+      const parentCount = measured(record(raw?.parents)?.totalCount);
+      if (!raw || typeof raw.oid !== "string" || !/^[a-f0-9]{40}$/i.test(raw.oid) ||
+        typeof raw.committedDate !== "string" || !Number.isFinite(Date.parse(raw.committedDate)) ||
+        typeof raw.url !== "string" || raw.url !== `${repository.url}/commit/${raw.oid}` || parentCount === null) {
+        invalid = true;
+        continue;
       }
-    }));
-    const captureComplete = !listed.next && !invalid;
-    const partial = !captureComplete || failures.length > 0;
+      if (parentCount > 1) continue;
+      const sha = raw.oid.toLowerCase();
+      if (commits.has(sha)) continue;
+      const linked = record(record(raw.author)?.user);
+      const author = { id: linked?.databaseId as number, login: linked?.login as string };
+      const additions = measured(raw.additions);
+      const deletions = measured(raw.deletions);
+      if (additions === null || deletions === null) missingStats += 1;
+      commits.set(sha, {
+        id: `${repository.id}:commit:${sha}`, repositoryId: repository.id, sha, url: raw.url,
+        authorPersonId: validUser(author) ? personId(author) : null,
+        committedAt: raw.committedDate, additions, deletions,
+        isBot: validUser(author) && author.login.endsWith("[bot]"),
+      });
+    }
+    const captureComplete = !hasNextPage && !invalid;
     return {
       code: {
-        repositoryId: repository.id, status: partial ? "partial" : "ready", fetchedAt: now().toISOString(),
-        detailReadLimit: budget.limit,
-        commits: commits.sort((a, b) => b.committedAt.localeCompare(a.committedAt) || a.sha.localeCompare(b.sha)),
-        captureComplete, retryAt: failures.length
-          ? new Date(Math.max(now().getTime() + 900000, ...failures.map((entry) => entry.retryAt))).toISOString() : null,
+        repositoryId: repository.id, status: captureComplete && !missingStats ? "ready" : "partial",
+        fetchedAt: now().toISOString(), detailReadLimit: null,
+        commits: [...commits.values()].sort((a, b) => b.committedAt.localeCompare(a.committedAt) || a.sha.localeCompare(b.sha)),
+        captureComplete, retryAt: invalid || missingStats ? new Date(now().getTime() + 900000).toISOString() : null,
         message: [captureComplete ? "Captured default-branch non-merge commits." : "Partial capture · latest 10 default-branch records; merge commits excluded.",
-          failures.length ? `${failures.length} commits have unknown changed-line totals. ${failures[0].message}` : "Changed lines measured from immutable SHA details."].join(" "),
+          missingStats ? `${missingStats} commits have unknown changed-line totals.` : "Changed lines measured by GitHub commit history.",
+          invalid ? "Malformed history records were excluded." : ""].filter(Boolean).join(" "),
       },
       people: [...people.values()],
     };

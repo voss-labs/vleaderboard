@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Route } from "./+types/home";
-import { loadSnapshot } from "../data/load-snapshot.server";
+import { previewEnabledContext, snapshotReaderContext } from "../snapshot-context.server";
 import { deriveLeaderboard } from "../data/derive";
 import type { DataMode, Period } from "../data/types";
 import { Leaderboard } from "../components/Leaderboard";
@@ -15,9 +15,13 @@ export function meta() {
   ];
 }
 
-export async function loader() {
-  const snapshot = await loadSnapshot({ mode: "github" });
-  return { snapshot, serverTime: new Date().toISOString() };
+export function headers() {
+  return { "Cache-Control": "no-store" };
+}
+
+export async function loader({ context }: Route.LoaderArgs) {
+  const snapshot = await context.get(snapshotReaderContext)({ mode: "github" });
+  return { snapshot, serverTime: new Date().toISOString(), previewEnabled: context.get(previewEnabledContext) };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
@@ -38,12 +42,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     <header className="leaderboard-header">
       <a className="leaderboard-brand" href="https://vosslabs.org" target="_blank" rel="noreferrer" aria-label="VOSS Labs website"><span aria-hidden="true" />VOSS<span className="leaderboard-brand-labs">Labs</span></a>
       <div className="leaderboard-source-controls">
-        {import.meta.env.DEV ? <><label className="sr-only" htmlFor="data-mode">Development data source</label>
+        {import.meta.env.DEV && loaderData.previewEnabled ? <><label className="sr-only" htmlFor="data-mode">Development data source</label>
         <select id="data-mode" value={requestedMode} onChange={(event) => void load(event.target.value as DataMode)} aria-busy={pending}>
           <option value="github">Public GitHub</option>
           <option value="preview">Preview (dev)</option>
         </select></> : <span className="leaderboard-production-source"><Icon name="github" size={14} />GitHub</span>}
-        <button className="leaderboard-refresh" onClick={() => void load(refreshMode)} disabled={pending} aria-label="Refresh data" title="Refresh data">
+        <button className="leaderboard-refresh" onClick={() => void load(refreshMode)} disabled={pending} aria-label="Refresh data" title="Read the latest saved snapshot. GitHub capture runs every 15 minutes.">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M20 7V3m0 4h-4M4 17v4m0-4h4M20 7a9 9 0 0 0-15 1M4 17a9 9 0 0 0 15-1" /></svg>
           <span>{pending ? "Refreshing" : "Refresh"}</span>
         </button>
@@ -62,7 +66,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       </div>
 
       {(error || sourceFailure) && <div className="leaderboard-error" role="alert">
-        <p>{error ?? (snapshot.source.status === "unavailable" ? "GitHub work data is unavailable. Refresh to try again." : "Showing the last available GitHub snapshot. Refresh to retry.")}</p>
+        <p>{error ?? (snapshot.source.status === "unavailable" ? "The first GitHub capture is not available yet. Captures run every 15 minutes." : "Showing the last successful GitHub capture. Captures run every 15 minutes.")}</p>
         {error && <p>The previous {sourceName} snapshot remains visible.</p>}
         {snapshot.source.retryAt && <p>Next GitHub attempt after <Timestamp value={snapshot.source.retryAt} />.</p>}
       </div>}

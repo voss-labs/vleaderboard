@@ -6,3 +6,9 @@
 /build/
 *.tsbuildinfo
 *.log
+
+/.wrangler/
+.dev.vars*
+!.dev.vars.example
+
+.deploy.secrets

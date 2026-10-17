@@ -11,7 +11,8 @@ export function addCodeMetrics(
 ): CodeCoverage {
   const code = snapshot.code ?? [];
   const available = code.filter((repository) => repository.commits !== null);
-  const detailReadLimit = Math.max(20, ...code.map((repository) => repository.detailReadLimit));
+  const detailLimits = code.map((repository) => repository.detailReadLimit).filter((limit): limit is number => limit !== null);
+  const detailReadLimit = detailLimits.length ? Math.max(...detailLimits) : null;
   const complete = snapshot.catalogComplete && available.length === snapshot.repositories.length &&
     available.length > 0 && available.every((repository) => repository.captureComplete && repository.status === "ready");
   const status = available.length === 0 ? "unavailable" : available.some((repository) => repository.status === "stale")
@@ -22,7 +23,7 @@ export function addCodeMetrics(
     capturedCommits: 0, missingStats: 0, unattributedCommits: 0,
     detailReadLimit,
     message: snapshot.source.mode === "preview" ? "Simulated default-branch non-merge commits and changed lines."
-      : `Captured default-branch non-merge commits by committed date. Latest 10 records per repository; up to ${detailReadLimit} new SHA details per process per hour. Counts may cover only part of the selected period.`,
+      : `Captured default-branch non-merge commits by committed date. Latest 10 records per repository.${detailReadLimit === null ? " Changed lines arrive in the same history query." : ` Up to ${detailReadLimit} new SHA details per process per hour.`} Counts may cover only part of the selected period.`,
     retryAt: code.map((repository) => repository.retryAt).filter((time): time is string => !!time).sort().at(-1) ?? null,
   };
   for (const row of counts.values()) {

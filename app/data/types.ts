@@ -92,7 +92,7 @@ export type RepositoryCode = {
   captureComplete: boolean;
   message: string;
   retryAt: string | null;
-  detailReadLimit: number;
+  detailReadLimit: number | null;
 };
 export type CodeCoverage = {
   status: CodeStatus;
@@ -104,7 +104,7 @@ export type CodeCoverage = {
   unattributedCommits: number;
   message: string;
   retryAt: string | null;
-  detailReadLimit: number;
+  detailReadLimit: number | null;
 };
 export type OfficeSnapshot = {
   version: 1;

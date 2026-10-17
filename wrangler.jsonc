@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "vleaderboard",
+  "main": "workers/app.ts",
+  "compatibility_date": "2026-10-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "./build/client" },
+  "kv_namespaces": [{ "binding": "SNAPSHOTS" }],
+  "vars": { "ALLOW_PREVIEW": "false" },
+  "secrets": { "required": ["GITHUB_TOKEN"] },
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  }
+}
