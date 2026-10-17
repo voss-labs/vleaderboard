@@ -7,6 +7,7 @@
 .export-options strong { color: #fafafa; font-size: 13px; font-weight: 500; }
 .export-options button:hover strong { color: var(--orange); }
 .export-options span { color: var(--board-muted); font-size: 11px; }
+.export-note { margin: 4px 0 0; padding: 8px 12px 6px; border-top: 1px solid #262626; color: var(--board-muted); font-size: 11px; line-height: 1.5; }
 
 .contributor-card { width: calc(100% - 20px); max-width: 820px; max-height: calc(100dvh - 24px); margin: auto; padding: 0; overflow: hidden; border: 1px solid #333; border-top: 2px solid var(--orange); border-radius: 10px; background: #0f0f0f; color: var(--board-paper, #fafafa); box-shadow: 0 30px 80px #000000d0, 0 0 0 1px #fb7a3c14; }
 .contributor-card[open] { animation: contributor-card-in .18s ease-out; }
