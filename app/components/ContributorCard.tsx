@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { LeaderboardRow, OfficeSnapshot, Person } from "../data/types";
 import type { ContributionWindow } from "../data/contribution-history";
 import {
@@ -88,7 +88,7 @@ export function ContributorCard({ snapshot, person, row, contributionWindow, per
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [monthCount, setMonthCount] = useState(monthPageSize);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = ref.current;
     const previous = document.activeElement as HTMLElement | null;
     dialog?.showModal();
