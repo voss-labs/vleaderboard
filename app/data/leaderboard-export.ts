@@ -112,10 +112,10 @@ function calendarSvg(calendar: ContributionCalendar): string {
 }
 
 const printStyles = `
-@page { size: A4; margin: 14mm 12mm; }
+@page { size: A4; margin: 0; }
 * { box-sizing: border-box; }
 html { background: #0a0a0a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { margin: 0; padding: 28px 32px; background: #0a0a0a; color: #fafafa; font: 12px/1.6 "Geist", Arial, sans-serif; }
+body { margin: 0; padding: 40px 44px; -webkit-box-decoration-break: clone; box-decoration-break: clone; background: #0a0a0a; color: #fafafa; font: 12px/1.6 "Geist", Arial, sans-serif; }
 header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid #292929; }
 .brand { display: inline-flex; align-items: center; gap: 7px; font-size: 22px; font-weight: 900; letter-spacing: -.8px; }
 .brand i { width: 11px; height: 11px; background: #fb7a3c; margin-right: 2px; }
@@ -134,7 +134,7 @@ thead th { height: 34px; padding: 0 8px; border-top: 1px solid #292929; border-b
 thead th.left { text-align: left; }
 tbody tr.summary td { padding: 12px 8px 6px; }
 tbody tr.activity td { padding: 0 8px 12px; border-bottom: 1px solid #292929; }
-tbody tr { break-inside: avoid; page-break-inside: avoid; }
+tbody { break-inside: avoid; page-break-inside: avoid; }
 td { text-align: right; vertical-align: middle; font: 500 13px "Geist Mono", monospace; color: #e0e0e0; }
 td.rank { width: 44px; text-align: left; color: #999; font-size: 12px; }
 td.who { text-align: left; font-family: "Geist", Arial, sans-serif; }
@@ -157,7 +157,7 @@ td.merged { font-size: 20px; letter-spacing: -1px; }
 .calendar .l2 { fill: #8c3e1b; }
 .calendar .l3 { fill: #cb5a27; }
 .calendar .l4 { fill: #fb7a3c; }
-.facts { display: grid; gap: 2px; min-width: 150px; }
+.facts { display: grid; gap: 1px; min-width: 150px; white-space: nowrap; }
 .legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin: 14px 0 0; color: #a3a3a3; font-size: 10px; }
 .legend i { width: 9px; height: 9px; border-radius: 2px; }
 footer { margin-top: 22px; padding-top: 12px; border-top: 1px solid #292929; color: #a3a3a3; font-size: 10px; }
@@ -169,7 +169,7 @@ export function leaderboardPrintDocument(data: LeaderboardExport): string {
     const name = html(displayName(person));
     const initials = html(displayName(person).split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase());
     const identity = `<strong>${name}</strong><small>${login ? `@${html(login)}` : person.kind === "preview" ? "Preview contributor" : "Contributor"}</small>`;
-    return `<tr class="summary${row.rank === 1 ? " leading" : ""}">
+    return `<tbody><tr class="summary${row.rank === 1 ? " leading" : ""}">
 <td class="rank">${row.rank.toString().padStart(2, "0")}</td>
 <td class="who"><div class="identity"><span class="avatar">${initials}${avatarUrl ? `<img src="${html(avatarUrl)}" alt="">` : ""}</span><div>${profileUrl ? `<a href="${html(profileUrl)}">${identity}</a>` : identity}</div></div></td>
 <td class="merged">${number(data.pullsCaptured ? row.merged : null)}</td>
@@ -178,7 +178,7 @@ export function leaderboardPrintDocument(data: LeaderboardExport): string {
 <td class="added">${number(row.additions, "+")}</td>
 <td class="removed">${number(row.deletions, "−")}</td>
 </tr>
-<tr class="activity"><td colspan="7"><div class="activity-cell">${calendarSvg(calendar)}<div class="facts"><span><b>${calendar.total.toLocaleString("en-US")}</b> contributions in 12 months</span><span><b>${stats.activeDays.toLocaleString("en-US")}</b> active days · <b>${stats.longestStreak}</b>-day best streak</span><span>First <b>${html(date(stats.first))}</b></span><span>Latest <b>${html(date(stats.latest))}</b></span></div></div></td></tr>`;
+<tr class="activity"><td colspan="7"><div class="activity-cell">${calendarSvg(calendar)}<div class="facts"><span><b>${calendar.total.toLocaleString("en-US")}</b> contributions in 12 months</span><span><b>${stats.activeDays.toLocaleString("en-US")}</b> active days</span><span><b>${stats.longestStreak}</b>-day best streak</span><span>First <b>${html(date(stats.first))}</b></span><span>Latest <b>${html(date(stats.latest))}</b></span></div></div></td></tr></tbody>`;
   }).join("\n");
   const count = data.query ? `${data.contributors.length} of ${data.totalContributors}` : `${data.contributors.length}`;
   return `<!doctype html>
@@ -197,7 +197,7 @@ export function leaderboardPrintDocument(data: LeaderboardExport): string {
 </section>
 <table>
 <thead><tr><th class="left">Rank</th><th class="left">Contributor</th><th>Merged PRs</th><th>Opened</th><th>Commits</th><th>Added</th><th>Removed</th></tr></thead>
-<tbody>${rows || `<tr><td colspan="7" class="empty">No contributors in this export.</td></tr>`}</tbody>
+${rows || `<tbody><tr><td colspan="7" class="empty">No contributors in this export.</td></tr></tbody>`}
 </table>
 <p class="legend">Less <i style="background:#1a1a1a"></i><i style="background:#4a2515"></i><i style="background:#8c3e1b"></i><i style="background:#cb5a27"></i><i style="background:#fb7a3c"></i> More</p>
 <footer>Calendar squares count authored commits and opened pull requests over the last 12 months. A dash means the measurement is unavailable in the captured scope. Scope is the captured public VOSS Labs catalog and default-branch non-merge commits.</footer>

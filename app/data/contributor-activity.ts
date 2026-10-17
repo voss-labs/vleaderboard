@@ -102,7 +102,7 @@ export function buildContributionCalendar(events: ContributorEvent[], range: Cal
   const max = Math.max(0, ...counts.values());
   const weeks: CalendarDay[][] = [];
   const months: ContributionCalendar["months"] = [];
-  const monthFormat = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
+  const monthFormat = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
   for (let weekStart = first - new Date(first).getUTCDay() * DAY; weekStart <= gridEnd; weekStart += 7 * DAY) {
     const week: CalendarDay[] = [];
     let monthStart: number | null = null;
