@@ -152,12 +152,13 @@ export function assertPublicSnapshot(value: unknown): asserts value is OfficeSna
   for (const entry of code) {
     if (entry.retryAt !== null || entry.detailReadLimit !== null) throw new Error("Incomplete code capture.");
     bool(entry.captureComplete);
-    const commits = array(entry.commits, MAX_CAPTURE_RECORDS).map((item) => record(item, ["id", "repositoryId", "sha", "url", "authorPersonId", "committedAt", "additions", "deletions", "isBot"], ["messageHeadline"]));
+    const commits = array(entry.commits, MAX_CAPTURE_RECORDS).map((item) => record(item, ["id", "repositoryId", "sha", "url", "authorPersonId", "committedAt", "additions", "deletions", "isBot"], ["messageHeadline", "attributedBy"]));
     unique(commits, "sha");
     const repository = repositories.find((item) => item.id === entry.repositoryId)!;
     for (const commit of commits) {
       text(commit.sha); bool(commit.isBot); timestamp(commit.committedAt);
       if ("messageHeadline" in commit) text(commit.messageHeadline);
+      if ("attributedBy" in commit) { oneOf(commit.attributedBy, ["pull-request"]); reference(commit.authorPersonId, personIds); }
       nullable(commit.authorPersonId, (id) => reference(id, personIds));
       nullable(commit.additions, integer); nullable(commit.deletions, integer);
       if (!/^[a-f0-9]{40}$/i.test(commit.sha) || commit.repositoryId !== entry.repositoryId ||
