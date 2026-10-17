@@ -23,14 +23,21 @@ export type LeaderboardExport = {
   pullsCaptured: boolean;
   query: string;
   totalContributors: number;
+  excludedWithoutLines: number;
   repositoryCount: number;
   contributors: ExportContributor[];
 };
 
 const displayName = (person: Person) => person.name.replace(/^Preview /, "");
 
+/** Unknown (null) line counts are kept; only a measured total of zero changed lines is excluded. */
+export function hasChangedLines(row: LeaderboardRow): boolean {
+  return row.additions !== 0 || row.deletions !== 0;
+}
+
 export function buildLeaderboardExport(snapshot: OfficeSnapshot, board: Leaderboard, rows: LeaderboardRow[], periodLabel: string, query = ""): LeaderboardExport {
   const people = new Map(snapshot.people.map((person) => [person.id, person]));
+  const included = rows.filter(hasChangedLines);
   return {
     periodLabel,
     from: board.from,
@@ -40,8 +47,9 @@ export function buildLeaderboardExport(snapshot: OfficeSnapshot, board: Leaderbo
     pullsCaptured: board.coveredRepositoryIds.length > 0,
     query: query.trim(),
     totalContributors: board.rows.length,
+    excludedWithoutLines: rows.length - included.length,
     repositoryCount: snapshot.repositories.length,
-    contributors: rows.flatMap((row) => {
+    contributors: included.flatMap((row) => {
       const person = people.get(row.personId);
       if (!person) return [];
       const identity = validUser(person.github) ? person.github : null;
@@ -55,6 +63,8 @@ export function buildLeaderboardExport(snapshot: OfficeSnapshot, board: Leaderbo
 
 const number = (value: number | null, prefix = "") => value === null ? "—" : `${prefix}${value.toLocaleString("en-US")}`;
 const date = (value: string | null) => value && Number.isFinite(Date.parse(value)) ? calendarDate(value) : "—";
+const exclusionNote = (data: LeaderboardExport) => data.excludedWithoutLines
+  ? `${data.excludedWithoutLines} ${data.excludedWithoutLines === 1 ? "contributor" : "contributors"} with 0 changed lines excluded.` : "";
 const windowLabel = (data: LeaderboardExport) => `${data.from ? date(data.from) : "Earliest available work"} to ${date(new Date(Date.parse(data.to) - 1).toISOString())}`;
 
 function markdownCell(value: string): string {
@@ -67,7 +77,8 @@ export function leaderboardMarkdown(data: LeaderboardExport): string {
     "",
     `**Period:** ${data.periodLabel} (${windowLabel(data)}, UTC)  `,
     `**Snapshot captured:** ${data.capturedAt ? `${data.capturedAt.replace("T", " ").replace(/\.\d{3}Z$|Z$/, "")} UTC` : "Not captured"}  `,
-    `**Contributors:** ${data.query ? `${data.contributors.length} of ${data.totalContributors} matching “${markdownCell(data.query)}”` : data.contributors.length} across ${data.repositoryCount} repositories`,
+    `**Contributors:** ${data.query ? `${data.contributors.length} of ${data.totalContributors} matching “${markdownCell(data.query)}”` : data.contributors.length} across ${data.repositoryCount} repositories  `,
+    ...(data.excludedWithoutLines ? [`**Excluded:** ${exclusionNote(data)} Ranks are unchanged.  `] : []),
     ...(data.preview ? ["", "> Preview data. All counts are simulated."] : []),
     "",
     "| Rank | Contributor | Merged PRs | PRs opened | Commits | Lines added | Lines removed |",
@@ -193,7 +204,7 @@ export function leaderboardPrintDocument(data: LeaderboardExport): string {
 <section class="meta">
 <div><strong>Period</strong>${html(data.periodLabel)} · ${html(windowLabel(data))} UTC</div>
 <div><strong>Snapshot captured</strong>${html(date(data.capturedAt))}</div>
-<div><strong>Contributors</strong>${count}${data.query ? ` matching “${html(data.query)}”` : ""} · ${data.repositoryCount} repositories</div>
+<div><strong>Contributors</strong>${count}${data.query ? ` matching “${html(data.query)}”` : ""} · ${data.repositoryCount} repositories${data.excludedWithoutLines ? `<br>${html(exclusionNote(data))}` : ""}</div>
 </section>
 <table>
 <thead><tr><th class="left">Rank</th><th class="left">Contributor</th><th>Merged PRs</th><th>Opened</th><th>Commits</th><th>Added</th><th>Removed</th></tr></thead>
