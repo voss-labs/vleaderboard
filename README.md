@@ -14,7 +14,7 @@ npm run dev
 
 Open [localhost:5173](http://localhost:5173). Set `GITHUB_TOKEN` in the ignored `.dev.vars` file to enable authenticated GitHub capture. The token needs access to public GitHub GraphQL data; private repositories are excluded. Secrets enter through Worker bindings and never belong in `VITE_*`, Wrangler `vars` or browser code. `.env.example` documents the optional setting that disables Wrangler's fallback `.env` loading.
 
-The first page shows an honest unavailable state until a successful local capture. With the development server running, invoke its local scheduler:
+The first page shows an honest unavailable state until a successful local capture. With the development server running, invoke its local scheduler :
 
 ```sh
 curl 'http://localhost:5173/cdn-cgi/local/scheduled?format=json'
