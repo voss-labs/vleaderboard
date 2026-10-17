@@ -3,7 +3,7 @@ import { InvalidSnapshotRequest, loadSnapshot } from "../data/load-snapshot.serv
 
 export async function loader({ request }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
-  const mode = params.get("mode") ?? "preview";
+  const mode = params.get("mode") ?? "github";
   const repositoryId = params.get("repositoryId") ?? undefined;
   const headers = { "Cache-Control": "no-store" };
   if (mode !== "preview" && mode !== "github") {

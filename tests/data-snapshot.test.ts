@@ -28,7 +28,7 @@ function fakeGithub() {
     if (failure === "network") throw new Error("Network unavailable");
     if (failure === "rate") return new Response("", { status: 429, headers: { "retry-after": "600" } });
     const observedPull = { ...capturedPull, merged_at: mergedAt, updated_at: mergedAt };
-    const data = url.includes("/orgs/") ? catalog : url.includes("/pulls?") ? [observedPull]
+    const data = url.includes("/orgs/") ? catalog : url.includes("/commits?") ? [] : url.includes("/pulls?") ? [observedPull]
       : [{ ...observedPull, number: 20, state: "open", merged_at: null }, { ...observedPull, pull_request: {} }];
     return Response.json(data, { headers: pagination ? { Link: '<https://api.github.com/ignored>; rel="next"' } : {} });
   };
@@ -62,7 +62,7 @@ test("concurrent snapshots coalesce reads and real authors retain identities", a
   assert.equal(first.source.status, "partial");
   assert.equal(first.work[0].pulls?.[0].authorPersonId, "named:harshal-more");
   assert.deepEqual(first.work[0].pulls?.[0].requestedReviewerPersonIds, ["named:mandar-patil"]);
-  assert.equal(first.work[0].issues?.length, 1);
+  assert.equal(first.work[0].issues, null);
   assert.equal(first.people.find((person) => person.id === "github:120")?.homeRoomId, "commons");
   assert.ok(!first.people.some((person) => person.kind === "preview" || person.id === "github:900"));
   assert.ok(first.activity.every((event) => !event.fresh && event.source === "github"));
@@ -103,7 +103,7 @@ test("work refresh advances board capture inside the catalog cache window", asyn
   assert.equal(initial.source.fetchedAt, "2026-10-09T08:00:00.000Z");
   assert.equal(refreshed.source.fetchedAt, "2026-10-09T08:06:00.000Z");
   assert.equal(fake.urls.filter((url) => url.includes("/orgs/")).length, 1);
-  assert.equal(fake.count, 5);
+  assert.equal(fake.count, 4);
   const board = deriveLeaderboard(refreshed, "month", new Date(refreshed.source.fetchedAt!));
   assert.equal(board.rows.find((row) => row.personId === "named:harshal-more")?.merged, 1);
   fake.advance(301000); fake.fail("network");

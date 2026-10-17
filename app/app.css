@@ -23,7 +23,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; min-width: 320px; }
-body { overflow: hidden; }
+body { overflow-y: auto; background: #0a0a0a; }
 button, input, select { font: inherit; }
 button, a, select, input { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }

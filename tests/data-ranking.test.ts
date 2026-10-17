@@ -11,6 +11,7 @@ function rankingFixture(): OfficeSnapshot {
   snapshot.people = snapshot.people.slice(0, 3);
   snapshot.work = snapshot.work.slice(0, 1);
   snapshot.work[0].pulls = [];
+  snapshot.code = [];
   return snapshot;
 }
 
@@ -82,6 +83,7 @@ test("UTC month and rolling 30 days are inclusive at start and exclusive at capt
 test("unknown work contributes no zero rows and genuine mode excludes preview people", () => {
   const snapshot = createPreviewSnapshot(now);
   snapshot.source.mode = "github";
+  snapshot.code = snapshot.code?.filter((repo) => snapshot.mainRepositoryIds.includes(repo.repositoryId));
   snapshot.work = snapshot.work.filter((repo) => snapshot.mainRepositoryIds.includes(repo.repositoryId));
   assert.deepEqual(deriveLeaderboard(snapshot, "all", now).rows, []);
   snapshot.work.forEach((repo) => { repo.pulls = null; repo.issues = null; repo.status = "unavailable"; });

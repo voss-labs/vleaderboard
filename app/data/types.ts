@@ -72,6 +72,40 @@ export type RepositoryWork = {
   issues: WorkItem[] | null;
   message: string;
 };
+export type CodeStatus = "ready" | "partial" | "stale" | "unavailable";
+export type CodeCommit = {
+  id: string;
+  repositoryId: string;
+  sha: string;
+  url: string;
+  authorPersonId: string | null;
+  committedAt: string;
+  additions: number | null;
+  deletions: number | null;
+  isBot: boolean;
+};
+export type RepositoryCode = {
+  repositoryId: string;
+  status: CodeStatus;
+  fetchedAt: string | null;
+  commits: CodeCommit[] | null;
+  captureComplete: boolean;
+  message: string;
+  retryAt: string | null;
+  detailReadLimit: number;
+};
+export type CodeCoverage = {
+  status: CodeStatus;
+  repositoryIds: string[];
+  complete: boolean;
+  fetchedAt: string | null;
+  capturedCommits: number;
+  missingStats: number;
+  unattributedCommits: number;
+  message: string;
+  retryAt: string | null;
+  detailReadLimit: number;
+};
 export type OfficeSnapshot = {
   version: 1;
   source: SourceState;
@@ -81,6 +115,7 @@ export type OfficeSnapshot = {
   roomSelectionBasis: string;
   catalogComplete: boolean;
   work: RepositoryWork[];
+  code?: RepositoryCode[];
   activity: ActivityEvent[];
 };
 export type LeaderboardRow = {
@@ -89,6 +124,10 @@ export type LeaderboardRow = {
   merged: number;
   opened: number;
   reviews: number | null;
+  commits: number | null;
+  additions: number | null;
+  deletions: number | null;
+  codeStatus: CodeStatus;
 };
 export type Leaderboard = {
   rows: LeaderboardRow[];
@@ -98,6 +137,7 @@ export type Leaderboard = {
   coveredRepositoryIds: string[];
   complete: boolean;
   label: string;
+  codeCoverage: CodeCoverage;
 };
 export type CameraCommand = {
   nonce: number;

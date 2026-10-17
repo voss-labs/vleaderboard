@@ -1,8 +1,12 @@
 # VLeaderboard current handoff
 
-2026-10-09. Project pointer is in state.json; live phase is owned by Preset, never by this summary.
+2026-10-17. Current task pointer is in state.json; task-state.json also links the original project. Live phase is owned by Preset.
 
-## Confirmed by Boss
+## Current update
+
+Boss now requests a leaderboard-only page with a small avatar beside each contributor. This supersedes the visible office/game UI below. Hide the office canvas, rooms, people/project panels, tours and narrative activity. New steering adds commits, PR counts, lines added/removed and contributor details across every public VOSS repository. Production must use genuine GitHub only, hide Preview and reject fixture requests; development may retain an explicit preview switch. Improve the board with tighter spacing, contributor search, clear period and coverage controls, and readable per-repository details. Use bounded default-branch commit records with cached SHA details so code metrics share the PR date window; exclude merge diffs and mark partial/unavailable coverage. Research is in research/contribution-metrics.md. Task project: proj-80a9413ef32d45f1; all-repo/prod/UX implementation is underway after initial ranking tests and build passed.
+
+## Previous office scope
 
 - Spectator office; click people/rooms, pan, zoom, follow characters.
 - PixiJS world and React panels in existing React Router SSR project.

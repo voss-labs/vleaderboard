@@ -1,6 +1,12 @@
 import type { ActivityEvent, Person, Repository, RepositoryWork, WorkItem } from "./types.ts";
+import { createPeopleRegistry, validUser } from "./github-identity.ts";
+import type { GithubUser } from "./github-identity.ts";
+import { GithubFailure, retryTime } from "./github-failure.server.ts";
+import { createCodeReader, processCodeDetailBudget } from "./github-code.server.ts";
+import type { CodeDetailBudget } from "./github-code.server.ts";
 
-export type GithubUser = { id: number; login: string; type?: string };
+export type { GithubUser } from "./github-identity.ts";
+export { GithubFailure } from "./github-failure.server.ts";
 type GithubRepository = {
   id: number; name: string; full_name: string; private: boolean; owner: { login: string };
   description: string | null; language: string | null; archived: boolean; fork: boolean; pushed_at: string | null;
@@ -12,48 +18,14 @@ type GithubWork = {
 };
 export type CatalogResult = { repositories: Repository[]; complete: boolean };
 export type WorkResult = { work: RepositoryWork; people: Person[]; activity: ActivityEvent[] };
-export type GithubOptions = { fetcher?: typeof fetch; now?: () => Date; token?: string };
-
-export class GithubFailure extends Error {
-  retryAt: string;
-  constructor(message: string, retryAt: string) {
-    super(message);
-    this.name = "GithubFailure";
-    this.retryAt = retryAt;
-  }
-}
-
-function retryTime(headers: Headers, now: number): number {
-  const retry = headers.get("retry-after");
-  const seconds = retry !== null ? Number(retry) : NaN;
-  const date = retry !== null ? Date.parse(retry) : NaN;
-  const reset = Number(headers.get("x-ratelimit-reset")) * 1000;
-  const declared = Number.isFinite(seconds) ? now + seconds * 1000
-    : Number.isFinite(date) ? date : reset;
-  return Math.max(now + 60000, Number.isFinite(declared) ? declared : 0);
-}
-
-function validUser(user: GithubUser | undefined): user is GithubUser {
-  return !!user && Number.isSafeInteger(user.id) && user.id > 0 &&
-    typeof user.login === "string" && /^[A-Za-z0-9-]+(?:\[bot\])?$/.test(user.login);
-}
+export type GithubOptions = { fetcher?: typeof fetch; now?: () => Date; token?: string; codeDetailBudget?: CodeDetailBudget };
+export type GithubRequest = <T>(path: string, shape?: "array" | "object") => Promise<{ data: T; next: boolean }>;
 
 export function normalizeWork(
-  repository: Repository, pulls: GithubWork[], issues: GithubWork[], roster: Person[],
+  repository: Repository, pulls: GithubWork[], issues: GithubWork[] | null, roster: Person[],
   fetchedAt: string, partial: boolean,
 ): WorkResult {
-  const people = new Map<number, Person>();
-  const known = new Map(roster.filter((person) => person.github).map((person) => [person.github!.id, person]));
-  function personId(user: GithubUser): string {
-    const confirmed = known.get(user.id);
-    if (confirmed) return confirmed.id;
-    if (!people.has(user.id)) people.set(user.id, {
-      id: `github:${user.id}`, name: user.login, role: "Public contributor", kind: "github",
-      github: { id: user.id, login: user.login, url: `https://github.com/${user.login}` },
-      homeRoomId: "commons", table: null, repositoryIds: [], assignment: "unknown", palette: user.id % 24,
-    });
-    return `github:${user.id}`;
-  }
+  const { people, personId } = createPeopleRegistry(roster);
   function convert(raw: GithubWork, kind: WorkItem["kind"]): WorkItem {
     if (!Number.isSafeInteger(raw.number) || raw.number < 1 || !validUser(raw.user) ||
       typeof raw.title !== "string" || !Number.isFinite(Date.parse(raw.created_at)) ||
@@ -74,7 +46,7 @@ export function normalizeWork(
     };
   }
   const normalizedPulls = pulls.map((pull) => convert(pull, "pull-request"));
-  const normalizedIssues = issues.filter((issue) => !issue.pull_request).map((issue) => convert(issue, "issue"));
+  const normalizedIssues = issues?.filter((issue) => !issue.pull_request).map((issue) => convert(issue, "issue")) ?? null;
   const rawByNumber = new Map(pulls.map((pull) => [pull.number, pull]));
   const activity: ActivityEvent[] = normalizedPulls.flatMap((pull) => {
     const entries: ActivityEvent[] = [{
@@ -95,7 +67,7 @@ export function normalizeWork(
   return {
     work: { repositoryId: repository.id, status: partial ? "partial" : "ready", fetchedAt,
       pulls: normalizedPulls, issues: normalizedIssues,
-      message: partial ? "Partial history · first 100 PRs and open issues." : "Available PR history and open issues captured. Reviews not fetched." },
+      message: partial ? "Partial history · first 100 updated PRs. Issues and reviews not fetched." : "Available PR history captured. Issues and reviews not fetched." },
     people: [...people.values()],
     activity: activity.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, 80),
   };
@@ -105,8 +77,20 @@ export function createGithubClient(options: GithubOptions = {}) {
   const fetcher = options.fetcher ?? fetch;
   const now = options.now ?? (() => new Date());
   let blockedUntil = 0;
+  let active = 0;
+  const waiting: (() => void)[] = [];
 
-  async function request<T>(path: string): Promise<{ data: T[]; next: boolean }> {
+  const request: GithubRequest = async <T>(path: string, shape: "array" | "object" = "array") => {
+    if (active >= 3) await new Promise<void>((resolve) => waiting.push(resolve));
+    else active += 1;
+    try { return await read<T>(path, shape); } finally {
+      const resume = waiting.shift();
+      if (resume) resume();
+      else active -= 1;
+    }
+  };
+
+  async function read<T>(path: string, shape: "array" | "object"): Promise<{ data: T; next: boolean }> {
     const clock = now().getTime();
     if (clock < blockedUntil) throw new GithubFailure("GitHub retry is scheduled.", new Date(blockedUntil).toISOString());
     const headers: Record<string, string> = {
@@ -125,9 +109,12 @@ export function createGithubClient(options: GithubOptions = {}) {
         }
         throw new Error("Public GitHub request failed");
       }
+      if (response.headers.get("x-ratelimit-remaining") === "0") blockedUntil = retryTime(response.headers, clock);
       const data: unknown = await response.json();
-      if (!Array.isArray(data)) throw new Error("Invalid public GitHub response");
-      return { data: data as T[], next: /rel="next"/.test(response.headers.get("link") ?? "") };
+      if (shape === "array" ? !Array.isArray(data) : !data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("Invalid public GitHub response");
+      }
+      return { data: data as T, next: /rel="next"/.test(response.headers.get("link") ?? "") };
     } catch (error) {
       if (error instanceof GithubFailure) throw error;
       throw new GithubFailure("Public GitHub data is temporarily unavailable.", new Date(clock + 30000).toISOString());
@@ -138,7 +125,7 @@ export function createGithubClient(options: GithubOptions = {}) {
     const repositories: Repository[] = [];
     let complete = false;
     for (let page = 1; page <= 3; page += 1) {
-      const result = await request<GithubRepository>(`/orgs/voss-labs/repos?type=public&per_page=100&page=${page}`);
+      const result = await request<GithubRepository[]>(`/orgs/voss-labs/repos?type=public&per_page=100&page=${page}`);
       for (const raw of result.data) {
         if (raw.private !== false || raw.owner?.login?.toLowerCase() !== "voss-labs") continue;
         if (!Number.isSafeInteger(raw.id) || raw.id < 1 || typeof raw.name !== "string" ||
@@ -157,12 +144,10 @@ export function createGithubClient(options: GithubOptions = {}) {
 
   async function work(repository: Repository, roster: Person[]): Promise<WorkResult> {
     const base = `/repos/voss-labs/${encodeURIComponent(repository.name)}`;
-    const [pulls, issues] = await Promise.all([
-      request<GithubWork>(`${base}/pulls?state=all&sort=updated&direction=desc&per_page=100`),
-      request<GithubWork>(`${base}/issues?state=open&per_page=100`),
-    ]);
-    return normalizeWork(repository, pulls.data, issues.data, roster, now().toISOString(), pulls.next || issues.next);
+    const pulls = await request<GithubWork[]>(`${base}/pulls?state=all&sort=updated&direction=desc&per_page=100`);
+    return normalizeWork(repository, pulls.data, null, roster, now().toISOString(), pulls.next);
   }
 
-  return { catalog, work };
+  const budget = options.codeDetailBudget ?? processCodeDetailBudget(!!options.token);
+  return { catalog, work, code: createCodeReader(request, now, budget), codeDetailLimit: budget.limit };
 }

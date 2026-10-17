@@ -1,6 +1,6 @@
 import { selectMainRepositories } from "./derive.ts";
 import { createRoster } from "./roster.ts";
-import type { ActivityEvent, OfficeSnapshot, Person, Repository, WorkItem } from "./types.ts";
+import type { ActivityEvent, CodeCommit, OfficeSnapshot, Person, Repository, WorkItem } from "./types.ts";
 
 const catalog: [number, string, string | null, string | null][] = [
   [1178834519, "verp", "Academic ERP for students, courses and departments.", "TypeScript"],
@@ -118,11 +118,27 @@ export function createPreviewSnapshot(now: Date): OfficeSnapshot {
     occurredAt: pull.updatedAt, source: "preview" as const, url: null, fresh: false,
     }] : [];
   })).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+  const code = repositories.map((repository, repositoryIndex) => {
+    const authors = people.filter((person) => person.repositoryIds.includes(repository.id));
+    const contributors = authors.length ? authors : [people[repositoryIndex % 12]];
+    const commits: CodeCommit[] = contributors.flatMap((person, authorIndex) => [1, 5, 17, 38, 62].map((age, index) => {
+      const sha = (repositoryIndex * 1000 + authorIndex * 10 + index + 1).toString(16).padStart(40, "0");
+      return {
+        id: `${repository.id}:commit:${sha}`, repositoryId: repository.id, sha, url: "",
+        authorPersonId: person.id, committedAt: ago(age + authorIndex),
+        additions: index === 0 && authorIndex === 0 ? 0 : (authorIndex + 1) * 23 + index * 11,
+        deletions: index === 0 && authorIndex === 0 ? 0 : (authorIndex + 1) * 7 + index * 3,
+        isBot: false,
+      };
+    }));
+    return { repositoryId: repository.id, status: "ready" as const, fetchedAt: now.toISOString(),
+      commits, captureComplete: true, message: "Simulated default-branch non-merge commits and changed lines.", retryAt: null, detailReadLimit: 20 };
+  });
   return {
     version: 1,
     source: { mode: "preview", status: "ready", fetchedAt: now.toISOString(),
       message: "Preview data · simulated teams, activity and counts. Scenario dated 9 October 2026.", retryAt: null },
     people, repositories, mainRepositoryIds: selectMainRepositories(repositories),
-    roomSelectionBasis: "Preview selection · simulated activity", catalogComplete: true, work, activity,
+    roomSelectionBasis: "Preview selection · simulated activity", catalogComplete: true, work, code, activity,
   };
 }

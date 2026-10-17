@@ -46,7 +46,7 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "The office could not open";
+  let message = "The leaderboard could not open";
   let details = "Refresh the page to try again.";
   let stack: string | undefined;
 
@@ -65,7 +65,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     <main className="error-page">
       <h1>{message}</h1>
       <p>{details}</p>
-      <a className="button primary" href="/">Open the office</a>
+      <a className="button primary" href="/">Open the leaderboard</a>
       {stack && (
         <pre>
           <code>{stack}</code>

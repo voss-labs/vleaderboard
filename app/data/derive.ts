@@ -5,6 +5,7 @@ import type {
   Period,
   Repository,
 } from "./types.ts";
+import { addCodeMetrics, emptyLeaderboardRow } from "./derive-code.ts";
 
 export function selectMainRepositories(repositories: Repository[]): string[] {
   return repositories
@@ -42,14 +43,14 @@ export function deriveLeaderboard(
       if (pull.kind !== "pull-request" || pull.isBot || !person || seen.has(pull.id)) continue;
       if (snapshot.source.mode === "github" && person.kind === "preview") continue;
       seen.add(pull.id);
-      const row = counts.get(person.id) ?? {
-        personId: person.id, rank: 0, merged: 0, opened: 0, reviews: null,
-      };
+      const row = counts.get(person.id) ?? emptyLeaderboardRow(person.id);
       if (inside(pull.createdAt)) row.opened += 1;
       if (pull.state === "merged" && inside(pull.mergedAt)) row.merged += 1;
       counts.set(person.id, row);
     }
   }
+
+  const codeCoverage = addCodeMetrics(snapshot, counts, people, inside);
 
   const rows = [...counts.values()].sort((a, b) => b.merged - a.merged ||
     (people.get(a.personId)?.name ?? a.personId).localeCompare(
@@ -72,5 +73,6 @@ export function deriveLeaderboard(
     label: snapshot.source.mode === "preview"
       ? "Merged PRs · simulated preview"
       : "Merged PRs · fetched repository coverage",
+    codeCoverage,
   };
 }
