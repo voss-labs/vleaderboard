@@ -102,8 +102,10 @@ test("report preserves competition ranks, linked identities and per-repository c
   assert.equal(report.coverage.code.unattributedCommits, 1);
   assert.equal(report.coverage.code.missingStats, 1);
   assert.equal(report.coverage.complete, false);
-  assert.deepEqual(report.coverage.limits, { pullRequestsPerRepository: 100, commitRecordsPerRepository: 10 });
-  assert.match(report.coverage.message, /rather than lifetime totals/);
+  assert.deepEqual(report.coverage.pagination, { pullRequestPageSize: 100, commitPageSize: 100 });
+  assert.deepEqual(report.coverage.history, { pullRequests: false, commits: false, complete: false });
+  assert.equal("limits" in report.coverage, false);
+  assert.match(report.coverage.message, /Partial saved history/);
   for (const contributor of report.contributors) {
     for (const metric of ["merged", "opened", "capturedCommits"] as const) {
       assert.equal(contributor[metric], contributor.repositories.reduce((sum, entry) => sum + (entry[metric] ?? 0), 0));
@@ -175,7 +177,7 @@ test("GET and HEAD read the injected cached snapshot without upstream work", asy
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("Cache-Control"), "no-store");
   const report = await response.json() as ContributorReport;
-  assert.equal(report.period, "month");
+  assert.equal(report.period, "all");
   assert.equal(report.source.mode, "github");
   assert.equal(report.contributors[0].id, "github:1");
   for (const period of ["30d", "all"]) {

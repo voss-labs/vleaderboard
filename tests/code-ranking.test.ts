@@ -65,7 +65,8 @@ test("missing details remain unknown, measured empty commits remain zero", () =>
   assert.deepEqual([unknown.commits, unknown.additions, unknown.deletions, unknown.codeStatus], [2, null, null, "partial"]);
   assert.deepEqual([empty.commits, empty.additions, empty.deletions], [1, 0, 0]);
   assert.equal(board.codeCoverage.missingStats, 1);
-  assert.equal(board.codeCoverage.complete, false);
+  assert.equal(board.codeCoverage.complete, true);
+  assert.equal(board.codeCoverage.status, "partial");
 });
 
 test("uncaptured code supplies null metrics, and genuine mode excludes preview identities", () => {

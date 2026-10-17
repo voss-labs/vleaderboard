@@ -1,3 +1,4 @@
+import { historyCoverage } from "./history-coverage.ts";
 import type { CodeCoverage, LeaderboardRow, OfficeSnapshot, Person } from "./types.ts";
 
 export function emptyLeaderboardRow(personId: string): LeaderboardRow {
@@ -13,17 +14,16 @@ export function addCodeMetrics(
   const available = code.filter((repository) => repository.commits !== null);
   const detailLimits = code.map((repository) => repository.detailReadLimit).filter((limit): limit is number => limit !== null);
   const detailReadLimit = detailLimits.length ? Math.max(...detailLimits) : null;
-  const complete = snapshot.catalogComplete && available.length === snapshot.repositories.length &&
-    available.length > 0 && available.every((repository) => repository.captureComplete && repository.status === "ready");
+  const complete = historyCoverage(snapshot).commits;
   const status = available.length === 0 ? "unavailable" : available.some((repository) => repository.status === "stale")
-    ? "stale" : complete ? "ready" : "partial";
+    ? "stale" : complete && available.every((repository) => repository.status === "ready") ? "ready" : "partial";
   const coverage: CodeCoverage = {
     status, repositoryIds: [...new Set(available.map((repository) => repository.repositoryId))], complete,
     fetchedAt: available.map((repository) => repository.fetchedAt).filter((time): time is string => !!time).sort().at(-1) ?? null,
     capturedCommits: 0, missingStats: 0, unattributedCommits: 0,
     detailReadLimit,
     message: snapshot.source.mode === "preview" ? "Simulated default-branch non-merge commits and changed lines."
-      : `Captured default-branch non-merge commits by committed date. Latest 10 records per repository.${detailReadLimit === null ? " Changed lines arrive in the same history query." : ` Up to ${detailReadLimit} new SHA details per process per hour.`} Counts may cover only part of the selected period.`,
+      : `Captured default-branch non-merge commits by committed date. ${complete ? "Complete available history at capture time." : "Partial saved history; earlier records may be unavailable."}${detailReadLimit === null ? " Changed lines arrive in the same history query." : ` Up to ${detailReadLimit} new SHA details per process per hour.`}`,
     retryAt: code.map((repository) => repository.retryAt).filter((time): time is string => !!time).sort().at(-1) ?? null,
   };
   for (const row of counts.values()) {

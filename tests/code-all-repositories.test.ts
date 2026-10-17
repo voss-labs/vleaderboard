@@ -38,7 +38,7 @@ function allRepositorySource() {
     const user = { id: 5000 + repository, login: `contributor-${repository}` };
     if (url.includes("/pulls?")) return Response.json([{
       number: 1, title: `Contribution to product ${repository}`, state: "closed", user,
-      created_at: "2026-10-02T00:00:00Z", updated_at: "2026-10-03T00:00:00Z", merged_at: "2026-10-03T00:00:00Z",
+      created_at: "2026-10-02T00:00:00Z", updated_at: "2026-10-03T00:00:00Z", merged_at: "2026-10-03T00:00:00Z", closed_at: "2026-10-03T00:00:00Z",
     }]);
     if (history) {
       assert.equal(new Headers(init?.headers).get("authorization"), `Bearer ${fixtureToken}`);

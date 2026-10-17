@@ -51,6 +51,7 @@ export type WorkItem = {
   createdAt: string;
   updatedAt: string;
   mergedAt: string | null;
+  closedAt?: string | null;
   isBot: boolean;
 };
 export type ActivityEvent = {
@@ -65,6 +66,7 @@ export type ActivityEvent = {
   fresh: boolean;
 };
 export type RepositoryWork = {
+  captureComplete?: boolean;
   repositoryId: string;
   status: "ready" | "partial" | "stale" | "unavailable";
   fetchedAt: string | null;
@@ -77,6 +79,7 @@ export type CodeCommit = {
   id: string;
   repositoryId: string;
   sha: string;
+  messageHeadline?: string;
   url: string;
   authorPersonId: string | null;
   committedAt: string;

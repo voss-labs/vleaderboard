@@ -14,7 +14,7 @@ const capturedPull = {
   number: 8, title: "Captured public PR", state: "closed", user: { id: 86048671, login: "harshalmore31", type: "User" },
   merged_by: { id: 900, login: "somebody-else" },
   assignees: [{ id: 120, login: "outside-contributor" }], requested_reviewers: [{ id: 205825698, login: "Mandar885" }],
-  created_at: "2026-10-02T12:00:00Z", updated_at: "2026-10-08T12:00:00Z", merged_at: "2026-10-08T12:00:00Z",
+  created_at: "2026-10-02T12:00:00Z", updated_at: "2026-10-08T12:00:00Z", merged_at: "2026-10-08T12:00:00Z", closed_at: "2026-10-08T12:00:00Z",
 };
 
 function fakeGithub() {
@@ -30,8 +30,8 @@ function fakeGithub() {
     assert.equal(new Headers(init?.headers).get("X-GitHub-Api-Version"), "2026-03-10");
     if (failure === "network") throw new Error("Network unavailable");
     if (failure === "rate") return new Response("", { status: 429, headers: { "retry-after": "600" } });
-    const observedPull = { ...capturedPull, merged_at: mergedAt, updated_at: mergedAt };
-    const data = url.includes("/orgs/") ? catalog : url.endsWith("/graphql") ? historyResponse([], false, "vroom") : url.includes("/pulls?") ? [observedPull]
+    const observedPull = { ...capturedPull, merged_at: mergedAt, closed_at: mergedAt, updated_at: mergedAt };
+    const data = url.includes("/orgs/") ? catalog : url.endsWith("/graphql") ? { data: { repository: { defaultBranchRef: null } } } : url.includes("/pulls?") ? [observedPull]
       : [{ ...observedPull, number: 20, state: "open", merged_at: null }, { ...observedPull, pull_request: {} }];
     return Response.json(data, { headers: pagination ? { Link: '<https://api.github.com/ignored>; rel="next"' } : {} });
   };
@@ -62,7 +62,7 @@ test("concurrent snapshots coalesce reads and real authors retain identities", a
   assert.equal(fake.count, 3);
   assert.deepEqual(first, second);
   assert.equal(first.source.mode, "github");
-  assert.equal(first.source.status, "partial");
+  assert.equal(first.source.status, "ready");
   assert.equal(first.work[0].pulls?.[0].authorPersonId, "named:harshal-more");
   assert.deepEqual(first.work[0].pulls?.[0].requestedReviewerPersonIds, ["named:mandar-patil"]);
   assert.equal(first.work[0].issues, null);
@@ -91,7 +91,7 @@ test("expired work preserves data and rate-limit retry prevents more reads", asy
   assert.equal(fake.count, count);
   fake.advance(601000); fake.fail(null);
   const recovered = await load({ mode: "github" });
-  assert.equal(recovered.source.status, "partial");
+  assert.equal(recovered.source.status, "ready");
   assert.equal(recovered.source.retryAt, null);
   assert.equal(recovered.work[0].status, "ready");
 });
@@ -138,13 +138,13 @@ test("unknown repository IDs never trigger an arbitrary repository fetch", async
   assert.ok(fake.urls.every((url) => url.startsWith("https://api.github.com/orgs/voss-labs/")));
 });
 
-test("pagination is bounded and disclosed for catalog and work", async () => {
+test("invalid catalog pagination fails closed without accepting incomplete scope", async () => {
   const fake = fakeGithub(); fake.paginate();
   const snapshot = await createSnapshotLoader(fake)({ mode: "github" });
-  assert.equal(fake.count, 5);
+  assert.equal(fake.count, 1);
   assert.equal(snapshot.catalogComplete, false);
-  assert.equal(snapshot.work[0].status, "partial");
-  assert.equal(snapshot.repositories.length, 1);
+  assert.deepEqual(snapshot.work, []);
+  assert.equal(snapshot.repositories.length, 0);
 });
 
 test("resource route returns no-store JSON and structured validation errors", async () => {

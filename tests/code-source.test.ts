@@ -31,25 +31,18 @@ test("default-branch capture attributes linked IDs, excludes merges, and retains
   assert.equal(new Headers(request.headers).get("authorization"), `Bearer ${fixtureToken}`);
   assert.deepEqual(body.variables, { name: "repo-0" });
   assert.match(body.query, /defaultBranchRef/);
-  assert.match(body.query, /history\(first: 10\)/);
+  assert.match(body.query, /history\(first: 100, after: \$cursor\)/);
   assert.doesNotMatch(body.query, /email|avatar|since|until/);
   assert.ok(!JSON.stringify(snapshot).includes(fixtureToken));
 });
 
-test("bounded partial history and SHA dedup need only one query with line totals", async () => {
+test("duplicate commit records reject history rather than concealing a pagination fault", async () => {
   const fake = fakeGithub();
-  fake.paginate();
-  fake.setCommits([rawCommit(1), rawCommit(1), ...Array.from({ length: 8 }, (_, i) => rawCommit(i + 2))]);
-  const snapshot = await createSnapshotLoader(fake)({ mode: "github" });
-  const code = snapshot.code![0];
-  assert.equal(code.captureComplete, false);
-  assert.equal(code.status, "partial");
-  assert.equal(code.retryAt, null);
-  assert.equal(code.commits?.length, 9);
+  fake.setCommits([rawCommit(1), rawCommit(1)]);
+  const client = createGithubClient(fake);
+  const repository = (await client.catalog()).repositories[0];
+  await assert.rejects(client.code(repository, roster), GithubFailure);
   assert.equal(fake.urls.filter((url) => url.endsWith("/graphql")).length, 1);
-  assert.ok(!fake.urls.some((url) => url.includes("/commits")));
-  assert.ok(code.commits?.every((entry) => entry.additions === 25 && entry.deletions === 4));
-  assert.equal(code.detailReadLimit, null);
 });
 
 test("code failures retain successful PRs and preserve unknown changed lines", async () => {
@@ -65,7 +58,7 @@ test("code failures retain successful PRs and preserve unknown changed lines", a
     assert.equal(row.deletions, null);
     assert.equal(row.commits, failure === "stats" ? 1 : null);
     assert.equal(snapshot.code?.[0].status, failure === "stats" ? "partial" : "unavailable");
-    assert.ok(snapshot.code?.[0].retryAt);
+    assert.equal(!!snapshot.code?.[0].retryAt, failure !== "stats");
     assert.ok(!JSON.stringify(snapshot).includes("Private upstream error"));
   }
 });
@@ -134,18 +127,19 @@ test("successful zero-remaining headers and GraphQL rate errors block subsequent
   assert.equal(exhausted.urls.length, 2);
 });
 
-test("malformed nodes are partial and identities never come from names or emails", async () => {
+test("malformed nodes reject capture and identities never come from names or emails", async () => {
   const fake = fakeGithub();
-  fake.setCommits([rawCommit(1, { databaseId: -1, login: "harshalmore31", name: "Harshal More", email: "ignored@example.org" }),
-    { ...rawCommit(2), oid: "not-a-sha" }, null, { ...rawCommit(3), parents: null }]);
+  const unlinked = rawCommit(1, { databaseId: -1, login: "harshalmore31", name: "Harshal More", email: "ignored@example.org" });
+  fake.setCommits([unlinked]);
   const client = createGithubClient(fake);
   const repository = (await client.catalog()).repositories[0];
   const result = await client.code(repository, roster);
-  assert.equal(result.code.status, "partial");
-  assert.equal(result.code.captureComplete, false);
-  assert.ok(result.code.retryAt);
   assert.equal(result.code.commits?.[0].authorPersonId, null);
   assert.deepEqual(result.people, []);
+  for (const malformed of [{ ...rawCommit(2), oid: "not-a-sha" }, null, { ...rawCommit(3), parents: null }, { ...rawCommit(4), messageHeadline: undefined }]) {
+    fake.setCommits([unlinked, malformed]);
+    await assert.rejects(client.code(repository, roster), GithubFailure);
+  }
 });
 
 test("empty branches are measured empty; inaccessible repositories and malformed pagination fail", async () => {
@@ -167,13 +161,13 @@ test("empty branches are measured empty; inaccessible repositories and malformed
   await assert.rejects(createCodeReader(request, fake.now)(repository, roster), GithubFailure);
 });
 
-test("measured zero remains zero and excess history records never broaden the ten record cap", async () => {
+test("measured zero remains zero and history beyond ten records remains available", async () => {
   const fake = fakeGithub();
   fake.setCommits([{ ...rawCommit(1), additions: 0, deletions: 0 }, ...Array.from({ length: 10 }, (_, i) => rawCommit(i + 2))]);
   const snapshot = await createSnapshotLoader(fake)({ mode: "github" });
-  assert.equal(snapshot.code?.[0].commits?.length, 10);
+  assert.equal(snapshot.code?.[0].commits?.length, 11);
   assert.equal(snapshot.code?.[0].commits?.[0].additions, 0);
   assert.equal(snapshot.code?.[0].commits?.[0].deletions, 0);
-  assert.equal(snapshot.code?.[0].captureComplete, false);
-  assert.ok(snapshot.code?.[0].retryAt);
+  assert.equal(snapshot.code?.[0].captureComplete, true);
+  assert.equal(snapshot.code?.[0].retryAt, null);
 });

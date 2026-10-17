@@ -12,7 +12,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     return json(request, { error: "Method not allowed." }, 405, { Allow: "GET, HEAD" });
   }
   const params = new URL(request.url).searchParams;
-  const period = params.get("period") ?? "month";
+  const period = params.get("period") ?? "all";
   if (params.getAll("period").length > 1 || (period !== "month" && period !== "30d" && period !== "all")) {
     return json(request, { error: "Invalid period. Use month, 30d or all." }, 400);
   }

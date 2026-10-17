@@ -1,6 +1,6 @@
-import type { ActivityEvent, Person, Repository, RepositoryWork, WorkItem } from "./types.ts";
-import { createPeopleRegistry, validUser } from "./github-identity.ts";
-import type { GithubUser } from "./github-identity.ts";
+import type { Repository } from "./types.ts";
+import { CAPTURE_PAGE_SIZE } from "./capture-limits.ts";
+import { createWorkReader } from "./github-work.server.ts";
 import { GithubFailure } from "./github-failure.server.ts";
 import { createGithubTransport } from "./github-request.server.ts";
 import type { GithubOptions } from "./github-request.server.ts";
@@ -12,66 +12,10 @@ type GithubRepository = {
   id: number; name: string; full_name: string; private: boolean; owner: { login: string };
   description: string | null; language: string | null; archived: boolean; fork: boolean; pushed_at: string | null;
 };
-type GithubWork = {
-  number: number; title: string; state: string; user: GithubUser; assignees?: GithubUser[];
-  requested_reviewers?: GithubUser[]; created_at: string; updated_at: string;
-  closed_at?: string | null; merged_at?: string | null; pull_request?: unknown;
-};
 export type CatalogResult = { repositories: Repository[]; complete: boolean };
-export type WorkResult = { work: RepositoryWork; people: Person[]; activity: ActivityEvent[] };
+export type { WorkResult } from "./github-work.server.ts";
+export { normalizeWork } from "./github-work.server.ts";
 export type { GithubOptions, GithubRequest } from "./github-request.server.ts";
-
-export function normalizeWork(
-  repository: Repository, pulls: GithubWork[], issues: GithubWork[] | null, roster: Person[],
-  fetchedAt: string, partial: boolean,
-): WorkResult {
-  const { people, personId } = createPeopleRegistry(roster);
-  function convert(raw: GithubWork, kind: WorkItem["kind"]): WorkItem {
-    if (!Number.isSafeInteger(raw.number) || raw.number < 1 || !validUser(raw.user) ||
-      typeof raw.title !== "string" || !Number.isFinite(Date.parse(raw.created_at)) ||
-      !Number.isFinite(Date.parse(raw.updated_at))) {
-      throw new Error("Invalid public work response");
-    }
-    const mergedAt = raw.merged_at && Number.isFinite(Date.parse(raw.merged_at)) ? raw.merged_at : null;
-    return {
-      id: `${repository.id}:${kind === "pull-request" ? "pr" : "issue"}:${raw.number}`,
-      repositoryId: repository.id, number: raw.number, title: raw.title,
-      url: `${repository.url}/${kind === "pull-request" ? "pull" : "issues"}/${raw.number}`,
-      kind, state: mergedAt ? "merged" : raw.state === "open" ? "open" : "closed",
-      authorPersonId: personId(raw.user),
-      assigneePersonIds: (raw.assignees ?? []).filter(validUser).map(personId),
-      requestedReviewerPersonIds: (raw.requested_reviewers ?? []).filter(validUser).map(personId),
-      createdAt: raw.created_at, updatedAt: raw.updated_at, mergedAt,
-      isBot: raw.user.type === "Bot" || raw.user.login.endsWith("[bot]"),
-    };
-  }
-  const normalizedPulls = pulls.map((pull) => convert(pull, "pull-request"));
-  const normalizedIssues = issues?.filter((issue) => !issue.pull_request).map((issue) => convert(issue, "issue")) ?? null;
-  const rawByNumber = new Map(pulls.map((pull) => [pull.number, pull]));
-  const activity: ActivityEvent[] = normalizedPulls.flatMap((pull) => {
-    const entries: ActivityEvent[] = [{
-      id: `${pull.id}:opened`, personId: pull.authorPersonId, repositoryId: repository.id,
-      kind: "opened", text: `Opened #${pull.number}: ${pull.title}`, occurredAt: pull.createdAt,
-      source: "github", url: pull.url, fresh: false,
-    }];
-    const closedAt = rawByNumber.get(pull.number)?.closed_at;
-    const occurredAt = pull.mergedAt ?? (closedAt && Number.isFinite(Date.parse(closedAt)) ? closedAt : null);
-    if (pull.state !== "open" && occurredAt) entries.push({
-      id: `${pull.id}:${pull.state}`, personId: pull.authorPersonId, repositoryId: repository.id,
-      kind: pull.state === "merged" ? "merged" : "closed",
-      text: `${pull.state === "merged" ? "Merged" : "Closed"} #${pull.number}: ${pull.title}`,
-      occurredAt, source: "github", url: pull.url, fresh: false,
-    });
-    return entries;
-  });
-  return {
-    work: { repositoryId: repository.id, status: partial ? "partial" : "ready", fetchedAt,
-      pulls: normalizedPulls, issues: normalizedIssues,
-      message: partial ? "Partial history · first 100 updated PRs. Issues and reviews not fetched." : "Available PR history captured. Issues and reviews not fetched." },
-    people: [...people.values()],
-    activity: activity.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, 80),
-  };
-}
 
 export function createGithubClient(options: GithubOptions = {}) {
   const now = options.now ?? (() => new Date());
@@ -80,12 +24,17 @@ export function createGithubClient(options: GithubOptions = {}) {
   async function catalog(): Promise<CatalogResult> {
     const repositories: Repository[] = [];
     let complete = false;
-    for (let page = 1; page <= 3; page += 1) {
-      const result = await request<GithubRepository[]>(`/orgs/voss-labs/repos?type=public&per_page=100&page=${page}`);
+    const seen = new Set<number>();
+    for (let page = 1; ; page += 1) {
+      const result = await request<GithubRepository[]>(`/orgs/voss-labs/repos?type=public&per_page=${CAPTURE_PAGE_SIZE}&page=${page}`);
+      if (result.data.length > CAPTURE_PAGE_SIZE || result.next && result.data.length !== CAPTURE_PAGE_SIZE ||
+        page > 1 && result.data.length === 0) throw new GithubFailure("Incomplete public catalog pagination.", new Date(now().getTime() + 30000).toISOString());
       for (const raw of result.data) {
+        if (!raw || typeof raw !== "object") throw new GithubFailure("Invalid public catalog response.", new Date(now().getTime() + 30000).toISOString());
         if (raw.private !== false || raw.owner?.login?.toLowerCase() !== "voss-labs") continue;
-        if (!Number.isSafeInteger(raw.id) || raw.id < 1 || typeof raw.name !== "string" ||
+        if (!raw || seen.has(raw.id) || !Number.isSafeInteger(raw.id) || raw.id < 1 || typeof raw.name !== "string" ||
           !/^[A-Za-z0-9_.-]+$/.test(raw.name)) throw new GithubFailure("Invalid public catalog response.", new Date(now().getTime() + 30000).toISOString());
+        seen.add(raw.id);
         repositories.push({
           id: `github:${raw.id}`, githubId: raw.id, name: raw.name, fullName: `voss-labs/${raw.name}`,
           description: raw.description ?? null, url: `https://github.com/voss-labs/${raw.name}`,
@@ -95,14 +44,8 @@ export function createGithubClient(options: GithubOptions = {}) {
       }
       if (!result.next) { complete = true; break; }
     }
-    return { repositories: [...new Map(repositories.map((repository) => [repository.id, repository])).values()], complete };
+    return { repositories, complete };
   }
 
-  async function work(repository: Repository, roster: Person[]): Promise<WorkResult> {
-    const base = `/repos/voss-labs/${encodeURIComponent(repository.name)}`;
-    const pulls = await request<GithubWork[]>(`${base}/pulls?state=all&sort=updated&direction=desc&per_page=100`);
-    return normalizeWork(repository, pulls.data, null, roster, now().toISOString(), pulls.next);
-  }
-
-  return { catalog, work, code: createCodeReader(graphql, now), codeDetailLimit: null };
+  return { catalog, work: createWorkReader(request, now), code: createCodeReader(graphql, now), codeDetailLimit: null };
 }

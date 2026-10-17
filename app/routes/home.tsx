@@ -26,7 +26,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const { snapshot, requestedMode, pending, error, load } = useOfficeSnapshot(loaderData.snapshot);
-  const [period, setPeriod] = useState<Period>("month");
+  const [period, setPeriod] = useState<Period>("all");
   const board = useMemo(() => deriveLeaderboard(
     snapshot,
     period,

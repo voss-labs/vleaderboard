@@ -1,9 +1,11 @@
 import type { OfficeSnapshot } from "./types.ts";
+import { MAX_CAPTURE_RECORDS } from "./capture-limits.ts";
+import { historyCoverage } from "./history-coverage.ts";
 
-function record(value: unknown, keys: string[]) {
+function record(value: unknown, keys: string[], optional: string[] = []) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid snapshot object.");
   const result = value as Record<string, unknown>;
-  if (Object.keys(result).length !== keys.length || keys.some((key) => !(key in result))) {
+  if (Object.keys(result).some((key) => !keys.includes(key) && !optional.includes(key)) || keys.some((key) => !(key in result))) {
     throw new Error("Invalid snapshot fields.");
   }
   return result;
@@ -108,7 +110,7 @@ export function assertPublicSnapshot(value: unknown): asserts value is OfficeSna
   }
   references(snapshot.mainRepositoryIds, repositoryIds, 4);
 
-  const work = array(snapshot.work, 300).map((item) => record(item, ["repositoryId", "status", "fetchedAt", "pulls", "issues", "message"]));
+  const work = array(snapshot.work, 300).map((item) => record(item, ["repositoryId", "status", "fetchedAt", "pulls", "issues", "message"], ["captureComplete"]));
   const code = array(snapshot.code, 300).map((item) => record(item, ["repositoryId", "status", "fetchedAt", "commits", "captureComplete", "message", "retryAt", "detailReadLimit"]));
   for (const entries of [work, code]) {
     const ids = unique(entries, "repositoryId");
@@ -119,8 +121,9 @@ export function assertPublicSnapshot(value: unknown): asserts value is OfficeSna
     }
   }
   for (const entry of work) {
+    if ("captureComplete" in entry) bool(entry.captureComplete);
     if (entry.issues !== null) throw new Error("Unexpected issue capture.");
-    const pulls = array(entry.pulls, 100).map((item) => record(item, ["id", "repositoryId", "number", "title", "url", "kind", "state", "authorPersonId", "assigneePersonIds", "requestedReviewerPersonIds", "createdAt", "updatedAt", "mergedAt", "isBot"]));
+    const pulls = array(entry.pulls, MAX_CAPTURE_RECORDS).map((item) => record(item, ["id", "repositoryId", "number", "title", "url", "kind", "state", "authorPersonId", "assigneePersonIds", "requestedReviewerPersonIds", "createdAt", "updatedAt", "mergedAt", "isBot"], ["closedAt"]));
     unique(pulls, "id");
     const repository = repositories.find((item) => item.id === entry.repositoryId)!;
     for (const pull of pulls) {
@@ -133,17 +136,28 @@ export function assertPublicSnapshot(value: unknown): asserts value is OfficeSna
       reference(pull.authorPersonId, personIds);
       references(pull.assigneePersonIds, personIds, 20000); references(pull.requestedReviewerPersonIds, personIds, 20000);
       timestamp(pull.createdAt); timestamp(pull.updatedAt); nullable(pull.mergedAt, timestamp);
-      if ((pull.state === "merged") !== (pull.mergedAt !== null)) throw new Error("Invalid merged time.");
+      if ((pull.state === "merged") !== (pull.mergedAt !== null) ||
+        Date.parse(pull.updatedAt as string) < Date.parse(pull.createdAt as string) ||
+        pull.mergedAt !== null && (Date.parse(pull.mergedAt as string) < Date.parse(pull.createdAt as string) ||
+          Date.parse(pull.mergedAt as string) > Date.parse(pull.updatedAt as string))) throw new Error("Invalid merged time.");
+      if ("closedAt" in pull) {
+        nullable(pull.closedAt, timestamp);
+        if ((pull.state === "open") !== (pull.closedAt === null) ||
+          pull.closedAt !== null && (Date.parse(pull.closedAt as string) < Date.parse(pull.createdAt as string) ||
+            Date.parse(pull.closedAt as string) > Date.parse(pull.updatedAt as string) ||
+            pull.mergedAt !== null && Date.parse(pull.closedAt as string) < Date.parse(pull.mergedAt as string))) throw new Error("Invalid closed time.");
+      }
     }
   }
   for (const entry of code) {
     if (entry.retryAt !== null || entry.detailReadLimit !== null) throw new Error("Incomplete code capture.");
     bool(entry.captureComplete);
-    const commits = array(entry.commits, 10).map((item) => record(item, ["id", "repositoryId", "sha", "url", "authorPersonId", "committedAt", "additions", "deletions", "isBot"]));
+    const commits = array(entry.commits, MAX_CAPTURE_RECORDS).map((item) => record(item, ["id", "repositoryId", "sha", "url", "authorPersonId", "committedAt", "additions", "deletions", "isBot"], ["messageHeadline"]));
     unique(commits, "sha");
     const repository = repositories.find((item) => item.id === entry.repositoryId)!;
     for (const commit of commits) {
       text(commit.sha); bool(commit.isBot); timestamp(commit.committedAt);
+      if ("messageHeadline" in commit) text(commit.messageHeadline);
       nullable(commit.authorPersonId, (id) => reference(id, personIds));
       nullable(commit.additions, integer); nullable(commit.deletions, integer);
       if (!/^[a-f0-9]{40}$/i.test(commit.sha) || commit.repositoryId !== entry.repositoryId ||
@@ -160,5 +174,13 @@ export function assertPublicSnapshot(value: unknown): asserts value is OfficeSna
     oneOf(event.kind, ["opened", "merged", "closed", "reviewed", "committed", "planning", "visit"]);
     nullable(event.url, githubUrl);
     if (event.source !== "github" || event.fresh !== false) throw new Error("Invalid public activity.");
+  }
+}
+
+export function assertCompletePublicSnapshot(value: unknown): asserts value is OfficeSnapshot {
+  assertPublicSnapshot(value);
+  if (!historyCoverage(value).complete || value.work.some((entry) => entry.pulls?.some((pull) => !("closedAt" in pull))) ||
+    value.code?.some((entry) => entry.commits?.some((commit) => typeof commit.messageHeadline !== "string"))) {
+    throw new Error("Incomplete public contribution history.");
   }
 }

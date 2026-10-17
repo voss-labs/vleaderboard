@@ -1,4 +1,6 @@
-import type { CodeStatus, LeaderboardRow, Repository, RepositoryCode } from "../data/types";
+import type { CodeStatus, LeaderboardRow, Repository, RepositoryCode, RepositoryWork } from "../data/types";
+import type { ContributionHistory } from "../data/contribution-history";
+import { ContributionRecords } from "./ContributionRecords";
 import { Icon, Timestamp } from "./ui";
 
 export type RepositoryContribution = {
@@ -6,6 +8,8 @@ export type RepositoryContribution = {
   row: LeaderboardRow;
   pullsCaptured: boolean;
   code: RepositoryCode | undefined;
+  work: RepositoryWork | undefined;
+  history: ContributionHistory;
 };
 
 function statusLabel(status: CodeStatus) {
@@ -32,14 +36,16 @@ export function ContributionDetails({ name, entries, preview, codeStatus }: { na
     <summary aria-label={`Contribution details for ${name}`}>Details<span className="contributor-repo-count">{entries.length} {entries.length === 1 ? "repo" : "repos"}</span><Icon name="chevron-right" size={13} /></summary>
     <div className="contribution-detail-content">
       <div className="contribution-detail-heading"><h3>Repository breakdown</h3><span>{statusLabel(codeStatus)}</span></div>
-      <p>Contributions in the selected period. PRs and code have separate coverage.</p>
-      {entries.length ? <div className="repository-contributions">{entries.map(({ repository, row, pullsCaptured, code }) => <div className="repository-contribution" key={repository.id}>
+      <p>Exact captured records in the selected period. Expand a record group to inspect the work on GitHub.</p>
+      {entries.length ? <div className="repository-contributions">{entries.map(({ repository, row, pullsCaptured, code, work, history }) => <div className="repository-contribution" key={repository.id}>
         <div className="repository-contribution-heading">
           {preview ? <strong>{repository.name}</strong> : <a href={repository.url} target="_blank" rel="noreferrer">{repository.fullName}<Icon name="arrow" size={13} /></a>}
           <span><MetricValue value={pullsCaptured ? row.merged : null} label="Merged PRs" /> merged PRs</span>
         </div>
         <ContributionMetrics row={row} pullsCaptured={pullsCaptured} />
         <p className="repository-code-coverage">{code ? <>{statusLabel(code.status)}. {code.message} Captured <Timestamp value={code.fetchedAt} />.{code.retryAt && <> Retry after <Timestamp value={code.retryAt} />.</>}</> : "Commit data has not been captured for this repository."}</p>
+        <p className="repository-code-coverage">{preview ? "Simulated pull request records." : work?.pulls ? <>{work.captureComplete === true ? "Complete captured PR history." : "Partial PR history; earlier records may be missing."}{work.status === "stale" && " Cached capture."}</> : "Pull request data has not been captured for this repository."}</p>
+        <ContributionRecords history={history} codeAvailable={code?.commits != null} pullsAvailable={work?.pulls != null} />
       </div>)}</div> : <p>No repository breakdown is available in this snapshot.</p>}
       <p className="contribution-detail-note">A dash means unavailable. Changed lines measure additions and removals in captured commits; they do not measure repository size or code ownership.</p>
     </div>

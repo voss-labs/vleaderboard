@@ -5,6 +5,7 @@ import type {
   Period,
   Repository,
 } from "./types.ts";
+import { historyCoverage } from "./history-coverage.ts";
 import { addCodeMetrics, emptyLeaderboardRow } from "./derive-code.ts";
 
 export function selectMainRepositories(repositories: Repository[]): string[] {
@@ -60,8 +61,7 @@ export function deriveLeaderboard(
     row.rank = index > 0 && rows[index - 1].merged === row.merged
       ? rows[index - 1].rank : index + 1;
   });
-  const complete = snapshot.source.mode === "preview" && work.length === snapshot.repositories.length &&
-    work.every((repository) => repository.status === "ready");
+  const complete = historyCoverage(snapshot).pullRequests;
 
   return {
     rows,

@@ -3,7 +3,8 @@ import test from "node:test";
 import { createSnapshotContext } from "../app/snapshot-context.server.ts";
 import { InvalidSnapshotRequest } from "../app/data/snapshot-request.server.ts";
 import { createStoredSnapshotReader, refreshStoredSnapshot, SNAPSHOT_FRESHNESS_MS, SNAPSHOT_KEY } from "../app/data/stored-snapshot.server.ts";
-import { assertPublicSnapshot } from "../app/data/snapshot-validation.server.ts";
+import { assertCompletePublicSnapshot, assertPublicSnapshot } from "../app/data/snapshot-validation.server.ts";
+import { historyCoverage } from "../app/data/history-coverage.ts";
 import type { OfficeSnapshot } from "../app/data/types.ts";
 import { loader as apiLoader } from "../app/routes/api.snapshot.ts";
 import type { Route } from "../app/routes/+types/api.snapshot";
@@ -22,7 +23,7 @@ function storage() {
 
 function source() {
   let clock = Date.parse("2026-10-17T10:00:00.000Z");
-  let failure: "network" | "auth" | "graphql" | "catalog" | "stats" | null = null;
+  let failure: "network" | "auth" | "graphql" | "catalog" | "malformed" | null = null;
   let requests = 0;
   const tokens: (string | null)[] = [];
   const fetcher: typeof fetch = async (input, init) => {
@@ -36,16 +37,16 @@ function source() {
     });
     if (String(input).endsWith("/graphql")) {
       if (failure === "graphql") return Response.json({ errors: [{ type: "FORBIDDEN", message: "Sensitive upstream message runtime-secret" }] });
-      return Response.json({ data: { repository: { defaultBranchRef: { target: { __typename: "Commit", history: {
+      return Response.json({ data: { repository: { defaultBranchRef: { target: { __typename: "Commit", oid: "a".repeat(40), history: { totalCount: 1,
         nodes: [{ oid: "a".repeat(40), url: `https://github.com/voss-labs/project/commit/${"a".repeat(40)}`,
-          committedDate: "2026-10-16T10:00:00Z", additions: failure === "stats" ? null : 2, deletions: 0,
+          messageHeadline: failure === "malformed" ? null : "Measured contribution", committedDate: "2026-10-16T10:00:00Z", additions: 2, deletions: 0,
           parents: { totalCount: 1 }, author: { user: { databaseId: 86048671, login: "harshalmore31" } } }],
-        pageInfo: { hasNextPage: true, endCursor: "older" },
+        pageInfo: { hasNextPage: false, endCursor: "oldest" },
       } } } } } });
     }
     return Response.json([{ number: 1, title: "Public PR", state: "closed",
       user: { id: 86048671, login: "harshalmore31" }, created_at: "2026-10-15T10:00:00Z",
-      updated_at: "2026-10-16T10:00:00Z", merged_at: "2026-10-16T10:00:00Z" }]);
+      updated_at: "2026-10-16T10:00:00Z", merged_at: "2026-10-16T10:00:00Z", closed_at: "2026-10-16T10:00:00Z" }]);
   };
   return {
     fetcher, tokens, now: () => new Date(clock),
@@ -69,7 +70,7 @@ async function captured() {
   return { store, github };
 }
 
-test("scheduled capture validates and publishes a bounded public snapshot with the runtime secret", async () => {
+test("scheduled capture validates and publishes a complete public snapshot with the runtime secret", async () => {
   const { store, github } = await captured();
   assert.equal(github.requests, 3);
   assert.deepEqual(github.tokens, Array(3).fill("Bearer runtime-secret-one"));
@@ -79,18 +80,18 @@ test("scheduled capture validates and publishes a bounded public snapshot with t
   assert.equal(document.version, 1);
   assert.equal(document.capturedAt, github.now().toISOString());
   assertPublicSnapshot(document.snapshot);
-  assert.equal(document.snapshot.source.status, "partial");
-  assert.equal(document.snapshot.code[0].captureComplete, false);
+  assert.equal(document.snapshot.source.status, "ready");
+  assert.equal(document.snapshot.code[0].captureComplete, true);
   assert.ok(!store.value!.includes("runtime-secret"));
   await refreshStoredSnapshot({ SNAPSHOTS: store, GITHUB_TOKEN: "runtime-secret-two" }, github);
   assert.deepEqual(github.tokens.slice(3), Array(3).fill("Bearer runtime-secret-two"));
   assert.equal(store.writes, 2);
 });
 
-test("failed authentication, GraphQL, incomplete catalog and failed measurements retain last good KV", async () => {
+test("failed authentication, GraphQL, incomplete catalog and malformed history retain last good KV", async () => {
   const { store, github } = await captured();
   const good = store.value;
-  for (const failure of ["network", "auth", "graphql", "catalog", "stats"] as const) {
+  for (const failure of ["network", "auth", "graphql", "catalog", "malformed"] as const) {
     github.fail(failure);
     const result = await refreshStoredSnapshot({ SNAPSHOTS: store, GITHUB_TOKEN: "runtime-secret" }, github);
     assert.equal(result.published, false, failure);
@@ -118,7 +119,7 @@ test("capture diagnostics retain safe failure categories through the cache witho
     ["network", "network", "catalog", undefined, undefined],
     ["auth", "http", "catalog", 401, undefined],
     ["graphql", "graphql", "graphql", 200, "FORBIDDEN"],
-    ["stats", "validation", undefined, undefined, undefined],
+    ["malformed", "validation", undefined, undefined, undefined],
   ] as const) {
     github.fail(failure);
     const result = await refreshStoredSnapshot({ SNAPSHOTS: store, GITHUB_TOKEN: "runtime-secret" }, github);
@@ -155,7 +156,7 @@ test("HTTP readers only read KV; age marks all repository coverage stale without
   const { store, github } = await captured();
   const read = createStoredSnapshotReader(store, github);
   const first = await read({ mode: "github", repositoryId: "github:123" });
-  assert.equal(first.source.status, "partial");
+  assert.equal(first.source.status, "ready");
   github.advance(SNAPSHOT_FRESHNESS_MS);
   const stale = await read({ mode: "github" });
   assert.equal(stale.source.status, "stale");
@@ -227,4 +228,51 @@ test("typed API contexts isolate readers and preserve no-store and validation st
   assert.equal(store.reads, reads);
   assert.equal((await apiLoader(args("http://local/api/snapshot?repositoryId=github:999", store))).status, 400);
   assert.equal(github.requests, 3);
+});
+
+test("known legacy ten-record documents remain readable without becoming complete publications", async () => {
+  const { store, github } = await captured();
+  const document = JSON.parse(store.value!) as { snapshot: OfficeSnapshot };
+  const snapshot = document.snapshot;
+  delete snapshot.work[0].captureComplete;
+  delete snapshot.work[0].pulls![0].closedAt;
+  const first = snapshot.code![0].commits![0];
+  snapshot.code![0].commits = Array.from({ length: 10 }, (_, index) => {
+    const sha = (index + 1).toString(16).padStart(40, "0");
+    const entry = { ...first, id: `${first.repositoryId}:commit:${sha}`, sha,
+      url: `${snapshot.repositories[0].url}/commit/${sha}` };
+    delete entry.messageHeadline;
+    return entry;
+  });
+  snapshot.source.status = "partial";
+  snapshot.code![0].status = "partial";
+  snapshot.code![0].captureComplete = false;
+  assertPublicSnapshot(snapshot);
+  assert.throws(() => assertCompletePublicSnapshot(snapshot));
+  store.replace(JSON.stringify(document));
+  const read = await createStoredSnapshotReader(store, github)({ mode: "github" });
+  assert.equal(read.source.status, "partial");
+  assert.equal(read.repositories.length, 1);
+  assert.equal(read.code![0].commits!.length, 10);
+  assert.deepEqual(historyCoverage(read), { pullRequests: false, commits: false, complete: false });
+  assert.equal(read.code![0].commits![0].messageHeadline, undefined);
+  assert.equal(read.work[0].pulls![0].closedAt, undefined);
+  assert.equal(store.writes, 1);
+});
+
+test("optional history fields remain allowlisted and reject inconsistent dates or identities", async () => {
+  const { store } = await captured();
+  const good = JSON.parse(store.value!).snapshot as OfficeSnapshot;
+  for (const mutate of [
+    (snapshot: OfficeSnapshot) => { Object.assign(snapshot.work[0], { captureComplete: "true" }); },
+    (snapshot: OfficeSnapshot) => { Object.assign(snapshot.code![0].commits![0], { messageHeadline: { unsafe: true } }); },
+    (snapshot: OfficeSnapshot) => { snapshot.work[0].pulls![0].closedAt = "invalid"; },
+    (snapshot: OfficeSnapshot) => { snapshot.work[0].pulls![0].closedAt = null; },
+    (snapshot: OfficeSnapshot) => { snapshot.work[0].pulls![0].closedAt = "2026-10-14T00:00:00Z"; },
+    (snapshot: OfficeSnapshot) => { snapshot.work[0].pulls![0].mergedAt = "2026-10-17T00:00:00Z"; },
+    (snapshot: OfficeSnapshot) => { Object.assign(snapshot.work[0].pulls![0], { arbitrary: "unknown" }); },
+  ]) {
+    const snapshot = structuredClone(good); mutate(snapshot);
+    assert.throws(() => assertPublicSnapshot(snapshot));
+  }
 });

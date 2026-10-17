@@ -45,6 +45,9 @@
 .ranking-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; padding: 23px 0; }
 .ranking-toolbar h2 { font-size: 16px; font-weight: 600; letter-spacing: -.4px; }
 .ranking-toolbar p { margin-top: 5px; color: var(--board-muted); font-size: 12px; line-height: 1.6; }
+.ranking-window { margin-bottom: 16px; color: var(--board-muted); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.ranking-window strong { margin-right: 5px; color: #d4d4d4; font-weight: 500; }
+.ranking-window time { white-space: normal; }
 .ranking-periods { display: inline-flex; width: 100%; padding: 3px; border: 1px solid var(--board-line); border-radius: 6px; background: #111; }
 .ranking-periods button { flex: 1; min-width: 0; min-height: 44px; padding: 0 6px; border-radius: 3px; font-size: 12px; line-height: 1.3; color: var(--board-muted); }
 .ranking-periods button[aria-pressed="true"] { background: #fafafa; color: #0a0a0a; font-weight: 600; }
@@ -112,7 +115,7 @@ a.contributor-profile:hover strong { color: var(--orange); }
 .contributor-details summary { display: flex; min-height: 44px; width: fit-content; align-items: center; gap: 6px; color: var(--board-muted); font-size: 12px; cursor: pointer; list-style: none; }
 .contributor-details summary::-webkit-details-marker { display: none; }
 .contributor-details summary:hover { color: var(--board-paper); }
-.contributor-details[open] summary svg { transform: rotate(90deg); }
+.contributor-details[open] > summary svg { transform: rotate(90deg); }
 .contributor-repo-count { padding: 2px 5px; border: 1px solid var(--board-line); border-radius: 3px; color: #aaa; font-size: 11px; }
 .contribution-detail-content { padding: 16px 12px; border: 1px solid var(--board-line); border-radius: 4px; background: #111; }
 .contribution-detail-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
@@ -126,6 +129,36 @@ a.contributor-profile:hover strong { color: var(--orange); }
 .repository-contribution-heading > span { color: var(--board-muted); font-size: 12px; }
 .repository-code-coverage { margin-top: 10px; font-size: 12px; line-height: 1.8; color: #999; }
 .contribution-detail-content .contribution-detail-note { margin-top: 18px; }
+.contribution-record-groups { margin-top: 12px; border-top: 1px solid var(--board-line); }
+.contribution-record-group + .contribution-record-group { border-top: 1px solid var(--board-line); }
+.contribution-record-group > summary { width: 100%; gap: 8px; color: #d4d4d4; }
+.contribution-record-group > summary > span { color: var(--board-muted); font: 12px var(--mono); }
+.contribution-record-group[open] > summary svg { transform: rotate(90deg); }
+.contribution-record-list { padding: 0; margin: 0; list-style: none; }
+.contribution-record { padding: 14px 0; border-top: 1px solid #292929; }
+.contribution-record-title { color: #e1e1e1; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.contribution-record-title a:hover, .commit-record-meta a:hover { color: var(--orange); }
+.contribution-record-title svg { margin-left: 5px; vertical-align: middle; flex-shrink: 0; }
+.commit-record-meta { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin-top: 7px; color: var(--board-muted); font-size: 11px; line-height: 1.8; }
+.commit-record-meta > a { display: inline-flex; align-items: center; min-height: 32px; gap: 4px; color: #d4d4d4; }
+.commit-record-meta code { font: 12px var(--mono); }
+.commit-record-lines { display: inline-flex; flex-wrap: wrap; gap: 10px; font-family: var(--mono); }
+.commit-record-lines .lines-added { color: #a2cba5; }
+.commit-record-lines .lines-removed { color: #e4a39b; }
+.pull-record-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.pull-record-heading > p { flex: 1 1 180px; }
+.pull-record-state { padding: 2px 6px; border: 1px solid #555; border-radius: 3px; color: #bdbdbd; font-size: 11px; line-height: 1.6; white-space: nowrap; }
+.pull-record-state.is-open { color: #a2cba5; border-color: #47654a; }
+.pull-record-state.is-merged { color: #d4b9ef; border-color: #695379; }
+.pull-record-dates { display: flex; flex-wrap: wrap; gap: 5px 18px; margin: 8px 0 0; font-size: 11px; line-height: 1.8; }
+.pull-record-dates > div { display: flex; flex-wrap: wrap; gap: 4px; }
+.pull-record-dates dt { color: #c2c2c2; }
+.pull-record-dates dd { margin: 0; color: var(--board-muted); }
+.record-unavailable { color: var(--board-muted); }
+.contribution-record-empty, .contribution-record-explainer { margin-bottom: 12px; color: var(--board-muted); font-size: 12px; line-height: 1.8; }
+.contribution-show-more { display: block; min-height: 44px; margin: 0 0 12px; padding: 6px 10px; border: 1px solid #555; border-radius: 4px; color: #e1e1e1; font-size: 12px; line-height: 1.6; text-align: left; }
+.contribution-show-more:hover { border-color: var(--orange); }
+.contribution-show-more > span { color: var(--board-muted); }
 .leaderboard-clear-search { min-height: 44px; margin-top: 16px; padding: 0 15px; border: 1px solid #70442e; border-radius: 4px; color: #ffad82; font-size: 12px; }
 
 @media (max-width: 767px) {

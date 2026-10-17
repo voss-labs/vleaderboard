@@ -4,15 +4,14 @@ import { createPreviewSnapshot } from "./preview.ts";
 import { createRoster } from "./roster.ts";
 import { InvalidSnapshotRequest, validateSnapshotRequest } from "./snapshot-request.server.ts";
 import type { SnapshotReader } from "./snapshot-request.server.ts";
-import { assertPublicSnapshot } from "./snapshot-validation.server.ts";
+import { assertCompletePublicSnapshot, assertPublicSnapshot } from "./snapshot-validation.server.ts";
 import type { OfficeSnapshot } from "./types.ts";
 import type { GithubDiagnostic } from "./github-failure.server.ts";
 
 export const SNAPSHOT_KEY = "public-office-snapshot:v1";
 export const SNAPSHOT_FRESHNESS_MS = 30 * 60 * 1000;
-export const CAPTURE_REQUEST_LIMIT = 44;
-export const CAPTURE_DEADLINE_MS = 45000;
-const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
+import { CAPTURE_REQUEST_LIMIT, CAPTURE_DEADLINE_MS, MAX_DOCUMENT_BYTES } from "./capture-limits.ts";
+export { CAPTURE_REQUEST_LIMIT, CAPTURE_DEADLINE_MS } from "./capture-limits.ts";
 export type SnapshotStore = { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<void> };
 type StoredSnapshot = { version: 1; capturedAt: string; snapshot: OfficeSnapshot };
 type SnapshotEnvironment = Pick<Env, "GITHUB_TOKEN"> & { SNAPSHOTS: SnapshotStore };
@@ -104,7 +103,7 @@ export async function refreshStoredSnapshot(env: SnapshotEnvironment, options: O
     })({ mode: "github" });
     repositories = snapshot.repositories.length;
     stage = "validate";
-    assertPublicSnapshot(snapshot);
+    assertCompletePublicSnapshot(snapshot);
     stage = "serialize";
     const capturedAt = (options.now?.() ?? new Date()).toISOString();
     const json = serialize({ version: 1, capturedAt, snapshot });

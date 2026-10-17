@@ -1,3 +1,4 @@
+import { historyCoverage } from "./history-coverage.ts";
 import { selectMainRepositories } from "./derive.ts";
 import { createGithubClient } from "./github.server.ts";
 import type { GithubOptions, WorkResult } from "./github.server.ts";
@@ -52,7 +53,7 @@ export function createSnapshotLoader(options: SnapshotLoaderOptions = {}) {
     const work: RepositoryWork[] = repositories.map((repository) => {
       const entry = observed.get(repository.id);
       if (!entry?.value) return {
-        repositoryId: repository.id, status: "unavailable", fetchedAt: null, pulls: null, issues: null,
+        repositoryId: repository.id, status: "unavailable", fetchedAt: null, pulls: null, issues: null, captureComplete: false,
         message: entry?.message || "Work has not been fetched for this repository.",
       };
       const expired = Date.parse(entry.fetchedAt ?? "") + 300000 <= now().getTime();
@@ -84,7 +85,8 @@ export function createSnapshotLoader(options: SnapshotLoaderOptions = {}) {
     for (const entry of observedCode.values()) {
       for (const person of entry.value?.people ?? []) people.set(person.id, person);
     }
-    const entries = [...observed.values()];
+    const entries = [...observed.values(), ...observedCode.values()];
+    const coverage = historyCoverage({ repositories, catalogComplete: catalog.value?.complete ?? false, work, code, source: { mode: "github" } });
     const stale = catalog.status === "stale" || entries.some((entry) => entry.status === "stale");
     const unavailable = catalog.status === "unavailable" || entries.length > 0 && entries.every((entry) => entry.status === "unavailable");
     const retryAt = [catalog.retryAt, ...entries.map((entry) => entry.retryAt)].filter((time): time is string => !!time).sort().at(-1) ?? null;
@@ -93,9 +95,9 @@ export function createSnapshotLoader(options: SnapshotLoaderOptions = {}) {
     return {
       version: 1,
       source: {
-        mode: "github", status: stale ? "stale" : unavailable ? "unavailable" : "partial",
+        mode: "github", status: stale ? "stale" : unavailable ? "unavailable" : coverage.complete && code.every((entry) => entry.status === "ready") ? "ready" : "partial",
         fetchedAt,
-        message: catalog.message || `Public GitHub snapshot · ${work.filter((entry) => entry.pulls !== null).length}/${repositories.length} repositories with captured PRs; ${code.filter((entry) => entry.commits !== null).length}/${repositories.length} with captured commits. Bounded history.`,
+        message: catalog.message || `Public GitHub snapshot · ${work.filter((entry) => entry.pulls !== null).length}/${repositories.length} repositories with captured PRs; ${code.filter((entry) => entry.commits !== null).length}/${repositories.length} with captured commits. ${coverage.complete ? "Complete available contribution history at capture time." : "Partial contribution history."}`,
         retryAt,
       },
       people: [...people.values()], repositories, mainRepositoryIds,

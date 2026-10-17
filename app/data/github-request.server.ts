@@ -1,3 +1,4 @@
+import { CAPTURE_DEADLINE_MS, CAPTURE_REQUEST_LIMIT } from "./capture-limits.ts";
 import { GithubFailure, retryTime } from "./github-failure.server.ts";
 import type { GithubDiagnostic, GithubGraphqlCode } from "./github-failure.server.ts";
 
@@ -10,7 +11,7 @@ export type GithubOptions = {
   requestTimeoutMs?: number;
   onDiagnostic?: (diagnostic: GithubDiagnostic) => void;
 };
-export type GithubRequest = <T>(path: string, shape?: "array" | "object") => Promise<{ data: T; next: boolean }>;
+export type GithubRequest = <T>(path: string, shape?: "array" | "object", canonicalPath?: string) => Promise<{ data: T; next: boolean }>;
 export type GraphqlRequest = <T>(query: string, variables: Record<string, string>) => Promise<T>;
 
 function positive(value: number | undefined, fallback: number): number {
@@ -19,12 +20,43 @@ function positive(value: number | undefined, fallback: number): number {
   return value;
 }
 
+function nextPage(link: string | null, path: string, canonicalPath?: string): boolean {
+  if (!link) return false;
+  const current = new URL(path, "https://api.github.com");
+  const page = Number(current.searchParams.get("page") ?? 1);
+  current.searchParams.delete("page");
+  current.searchParams.sort();
+  const relations = new Map<string, number>();
+  for (const part of link.split(",")) {
+    const match = part.trim().match(/^<([^>]+)>;\s*rel="([a-z ]+)"$/);
+    if (!match) throw new Error("Invalid GitHub pagination link.");
+    const target = new URL(match[1]);
+    const targetPage = target.searchParams.get("page");
+    if (target.origin !== current.origin || (target.pathname !== current.pathname && target.pathname !== canonicalPath) || target.hash || target.username || target.password ||
+      !targetPage || !/^[1-9]\d*$/.test(targetPage) || !Number.isSafeInteger(Number(targetPage)) || target.searchParams.getAll("page").length !== 1) {
+      throw new Error("Invalid GitHub pagination progression.");
+    }
+    target.searchParams.delete("page"); target.searchParams.sort();
+    if (target.search !== current.search) throw new Error("Invalid GitHub pagination scope.");
+    for (const relation of match[2].split(" ")) {
+      if (relations.has(relation)) throw new Error("Duplicate GitHub pagination relation.");
+      relations.set(relation, Number(targetPage));
+    }
+  }
+  const next = relations.get("next");
+  const last = relations.get("last");
+  if (next !== undefined && next !== page + 1 || last !== undefined && (last < page || next === undefined && last > page || next !== undefined && last < next)) {
+    throw new Error("Incomplete GitHub pagination links.");
+  }
+  return next !== undefined;
+}
+
 export function createGithubTransport(options: GithubOptions) {
   const fetcher = options.fetcher ?? fetch;
   const now = options.now ?? (() => new Date());
-  const requestLimit = positive(options.requestLimit, 44);
+  const requestLimit = positive(options.requestLimit, CAPTURE_REQUEST_LIMIT);
   const requestTimeoutMs = positive(options.requestTimeoutMs, 8000);
-  const deadline = now().getTime() + positive(options.deadlineMs, 45000);
+  const deadline = now().getTime() + positive(options.deadlineMs, CAPTURE_DEADLINE_MS);
   let requests = 0;
   let blockedUntil = 0;
   let active = 0;
@@ -41,7 +73,7 @@ export function createGithubTransport(options: GithubOptions) {
     return new GithubFailure("GitHub limited this snapshot. Retry is scheduled.", new Date(blockedUntil).toISOString(), "rate-limit");
   }
 
-  async function read(path: string, payload?: { query: string; variables: Record<string, string> }) {
+  async function read(path: string, payload?: { query: string; variables: Record<string, string> }, canonicalPath?: string) {
     const clock = now().getTime();
     const endpoint = payload ? "graphql" : path.startsWith("/orgs/") ? "catalog" : "pulls";
     let httpStatus: number | undefined;
@@ -85,7 +117,10 @@ export function createGithubTransport(options: GithubOptions) {
           throw new GithubFailure("GitHub returned GraphQL errors. The previous snapshot is retained.", new Date(clock + 30000).toISOString(), "graphql");
         }
       }
-      return { data, next: /rel="next"/.test(response.headers.get("link") ?? "") };
+      const owner = Array.isArray(data) ? data[0]?.owner : null;
+      const catalogAlias = path.startsWith("/orgs/voss-labs/repos?") && Number.isSafeInteger(owner?.id) && owner.id > 0 &&
+        owner.login?.toLowerCase() === "voss-labs" ? `/organizations/${owner.id}/repos` : undefined;
+      return { data, next: payload ? false : nextPage(response.headers.get("link"), path, canonicalPath ?? catalogAlias) };
     } catch (error) {
       const failure = error instanceof GithubFailure ? error : new GithubFailure("Public GitHub data is temporarily unavailable.", new Date(clock + 30000).toISOString(), signal?.aborted ? "timeout" : httpStatus === undefined ? "network" : "invalid-response");
       options.onDiagnostic?.({ endpoint, requests, category: failure.category, httpStatus, graphqlCode });
@@ -103,8 +138,8 @@ export function createGithubTransport(options: GithubOptions) {
     }
   }
 
-  const request: GithubRequest = <T>(path: string, shape: "array" | "object" = "array") => acquire(async () => {
-    const result = await read(path);
+  const request: GithubRequest = <T>(path: string, shape: "array" | "object" = "array", canonicalPath?: string) => acquire(async () => {
+    const result = await read(path, undefined, canonicalPath);
     if (shape === "array" ? !Array.isArray(result.data) : !result.data || typeof result.data !== "object" || Array.isArray(result.data)) {
       throw new GithubFailure("Invalid public GitHub response.", new Date(now().getTime() + 30000).toISOString());
     }

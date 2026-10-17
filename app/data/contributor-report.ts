@@ -1,3 +1,5 @@
+import { CAPTURE_PAGE_SIZE } from "./capture-limits.ts";
+import { historyCoverage } from "./history-coverage.ts";
 import { deriveLeaderboard } from "./derive.ts";
 import { validUser } from "./github-identity.ts";
 import type { LeaderboardRow, OfficeSnapshot, Period } from "./types.ts";
@@ -40,8 +42,9 @@ export function createContributorReport(snapshot: OfficeSnapshot, period: Period
       pullRequestRepositoryIds: board.coveredRepositoryIds,
       complete: board.complete,
       code: board.codeCoverage,
-      limits: { pullRequestsPerRepository: 100, commitRecordsPerRepository: 10 },
-      message: "Captured history only. Up to 100 most recently updated pull requests and the latest 10 default-branch commit records per repository, excluding merge commits. All periods, including all, describe captured subtotals rather than lifetime totals. Opened and merged PRs use their respective event dates; commits use committed dates. Unavailable measurements are null.",
+      history: historyCoverage(snapshot),
+      pagination: { pullRequestPageSize: CAPTURE_PAGE_SIZE, commitPageSize: CAPTURE_PAGE_SIZE },
+      message: `${historyCoverage(snapshot).complete ? "Complete available history at capture time." : "Partial saved history; earlier records may be unavailable."} Scope is the captured public VOSS Labs catalog and default-branch non-merge commits, including forks and archives. All time removes the date lower bound within that scope. Opened and merged PRs use their respective event dates; commits use committed dates. Unavailable measurements are null.`,
     },
     contributors: board.rows.map((row) => {
       const person = people.get(row.personId)!;

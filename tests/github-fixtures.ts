@@ -3,16 +3,18 @@ export const sha = (number: number) => number.toString(16).padStart(40, "0");
 export const rawCommit = (
   number: number, user: unknown = { databaseId: 86048671, login: "harshalmore31" }, parents = 1,
 ) => ({
-  oid: sha(number), committedDate: "2026-10-02T12:00:00Z", additions: 25, deletions: 4,
+  oid: sha(number), messageHeadline: `Contribution ${number}`, committedDate: "2026-10-02T12:00:00Z", additions: 25, deletions: 4,
   parents: { totalCount: parents }, author: { user },
 });
 
-export function historyResponse(nodes: unknown[] = [], next = false, name = "repo-0") {
-  return { data: { repository: { defaultBranchRef: { target: { __typename: "Commit", history: {
+export function historyResponse(nodes: unknown[] = [], next = false, name = "repo-0", options: { totalCount?: number; head?: string; endCursor?: string } = {}) {
+  const first = nodes[0] as { oid?: string } | null;
+  return { data: { repository: { defaultBranchRef: { target: { __typename: "Commit", oid: options.head ?? first?.oid ?? sha(0), history: {
+    totalCount: options.totalCount ?? nodes.length,
     nodes: nodes.map((node) => node && typeof node === "object" ? {
       ...node, url: `https://github.com/voss-labs/${name}/commit/${"oid" in node ? node.oid : ""}`,
     } : node),
-    pageInfo: { hasNextPage: next, endCursor: nodes.length ? "history-cursor" : null },
+    pageInfo: { hasNextPage: next, endCursor: options.endCursor ?? (nodes.length ? `history-${(nodes.at(-1) as { oid?: string })?.oid}` : null) },
   } } } } } };
 }
 
@@ -47,8 +49,13 @@ export function fakeGithub(repositoryCount = 1) {
     if (url.includes("/orgs/")) return Response.json(catalog, { headers });
     if (history) {
       const body = JSON.parse(String(init?.body));
-      const nodes = failure === "stats" ? commits.map((node) => ({ ...(node as object), additions: null, deletions: -1 })) : commits;
-      let response: unknown = historyResponse(nodes, next, body.variables.name);
+      const nodes = failure === "stats" ? commits.map((node) => ({ ...(node as object), additions: null, deletions: null })) : commits;
+      const offset = Number(body.variables.cursor?.replace("offset-", "") ?? 0);
+      const page = nodes.slice(offset, offset + 100);
+      let response: unknown = historyResponse(page, next || offset + 100 < nodes.length, body.variables.name, {
+        totalCount: nodes.length, head: (nodes[0] as { oid: string })?.oid, endCursor: `offset-${offset + page.length}`,
+      });
+      if (!nodes.length && !next) response = { data: { repository: { defaultBranchRef: null } } };
       if (failure === "object") response = [];
       if (failure === "errors" || failure === "graphql-rate") response = { ...response as object,
         errors: [{ type: failure === "graphql-rate" ? "RATE_LIMITED" : "FORBIDDEN", message: "Private upstream error" }] };
@@ -58,7 +65,7 @@ export function fakeGithub(repositoryCount = 1) {
     }
     if (url.includes("/pulls?")) return Response.json([{
       number: 1, title: "Public PR", state: "closed", user: { id: 86048671, login: "harshalmore31" },
-      created_at: "2026-10-02T00:00:00Z", updated_at: "2026-10-08T00:00:00Z", merged_at: "2026-10-08T00:00:00Z",
+      created_at: "2026-10-02T00:00:00Z", updated_at: "2026-10-08T00:00:00Z", merged_at: "2026-10-08T00:00:00Z", closed_at: "2026-10-08T00:00:00Z",
     }], { headers });
     throw new Error("Unexpected upstream endpoint");
   };
