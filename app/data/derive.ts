@@ -7,6 +7,7 @@ import type {
   Repository,
   SortKey,
 } from "./types.ts";
+import { isAgentAccount } from "./agents.ts";
 import { historyCoverage } from "./history-coverage.ts";
 import { addCodeMetrics, emptyLeaderboardRow } from "./derive-code.ts";
 
@@ -43,7 +44,7 @@ export function deriveLeaderboard(
   for (const repository of work) {
     for (const pull of repository.pulls ?? []) {
       const person = people.get(pull.authorPersonId);
-      if (pull.kind !== "pull-request" || pull.isBot || !person || seen.has(pull.id)) continue;
+      if (pull.kind !== "pull-request" || pull.isBot || !person || isAgentAccount(person) || seen.has(pull.id)) continue;
       if (snapshot.source.mode === "github" && person.kind === "preview") continue;
       seen.add(pull.id);
       const row = counts.get(person.id) ?? emptyLeaderboardRow(person.id);
